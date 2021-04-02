@@ -58,10 +58,10 @@ input_shape = (opt.channels, opt.img_height, opt.img_width, opt.img_depth)
 shared_dim = opt.dim * 2 ** opt.n_downsample
 
 # Initialize generator and discriminator
-shared_E = ResidualBlock(features=shared_dim)
+shared_E = ResidualBlock(features=shared_dim).to(device)
 E1 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E).to(device)
 E2 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E).to(device)
-shared_G = ResidualBlock(features=shared_dim)
+shared_G = ResidualBlock(features=shared_dim).to(device)
 G1 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G).to(device)
 G2 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G).to(device)
 D1 = Discriminator(input_shape).to(device)
