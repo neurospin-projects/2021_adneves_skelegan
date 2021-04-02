@@ -31,8 +31,9 @@ parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first 
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-parser.add_argument("--img_height", type=int, default=256, help="size of image height")
-parser.add_argument("--img_width", type=int, default=256, help="size of image width")
+parser.add_argument("--img_height", type=int, default=136, help="size of image height")
+parser.add_argument("--img_width", type=int, default=189, help="size of image width")
+parser.add_argument("--img_depth", type=int, default=157, help="size of image depth")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving generator samples")
 parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between saving model checkpoints")
@@ -51,7 +52,7 @@ os.makedirs("saved_models/%s" % opt.dataset_name, exist_ok=True)
 criterion_GAN = torch.nn.MSELoss()
 criterion_pixel = torch.nn.L1Loss()
 
-input_shape = (opt.channels, opt.img_height, opt.img_width)
+input_shape = (opt.channels, opt.img_height, opt.img_width, opt.img_depth)
 
 # Dimensionality (channel-wise) of image embedding
 shared_dim = opt.dim * 2 ** opt.n_downsample
@@ -122,29 +123,7 @@ lr_scheduler_D2 = torch.optim.lr_scheduler.LambdaLR(
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
-# Image transformations
-transforms_ = [
-    transforms.Resize(int(opt.img_height * 1.12), Image.BICUBIC),
-    transforms.RandomCrop((opt.img_height, opt.img_width)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-]
 
-# Training data loader
-'''dataloader = DataLoader(
-    ImageDataset("../../data/%s" % opt.dataset_name, transforms_=transforms_, unaligned=True),
-    batch_size=opt.batch_size,
-    shuffle=True,
-    num_workers=opt.n_cpu,
-)
-# Test data loader
-val_dataloader = DataLoader(
-    ImageDataset("../../data/%s" % opt.dataset_name, transforms_=transforms_, unaligned=True, mode="test"),
-    batch_size=5,
-    shuffle=True,
-    num_workers=1,
-)'''
 _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size)
 _, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = opt.batch_size)
 
