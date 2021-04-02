@@ -42,7 +42,7 @@ parser.add_argument("--dim", type=int, default=64, help="number of filters in fi
 opt = parser.parse_args()
 print(opt)
 
-cuda = True if torch.cuda.is_available() else False
+device = torch.device("cuda", index=0)
 
 # Create sample and checkpoint directories
 os.makedirs("images/%s" % opt.dataset_name, exist_ok=True)
@@ -59,23 +59,13 @@ shared_dim = opt.dim * 2 ** opt.n_downsample
 
 # Initialize generator and discriminator
 shared_E = ResidualBlock(features=shared_dim)
-E1 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E)
-E2 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E)
+E1 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E).to(device)
+E2 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E).to(device)
 shared_G = ResidualBlock(features=shared_dim)
-G1 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G)
-G2 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G)
-D1 = Discriminator(input_shape)
-D2 = Discriminator(input_shape)
-
-if cuda:
-    E1 = E1.cuda()
-    E2 = E2.cuda()
-    G1 = G1.cuda()
-    G2 = G2.cuda()
-    D1 = D1.cuda()
-    D2 = D2.cuda()
-    criterion_GAN.cuda()
-    criterion_pixel.cuda()
+G1 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G).to(device)
+G2 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G).to(device)
+D1 = Discriminator(input_shape).to(device)
+D2 = Discriminator(input_shape).to(device)
 
 if opt.epoch != 0:
     # Load pretrained models
@@ -156,8 +146,8 @@ for epoch in range(opt.epoch, opt.n_epochs):
     i = 0
     for batch_skel, batch_gw in zip(skel_train, gw_train):
         # Set model input
-        X1 = Variable(batch_skel[0].type(Tensor))
-        X2 = Variable(batch_gw[0].type(Tensor))
+        X1 = Variable(batch_skel[0].type(Tensor)).to(device, dtype=torch.float32)
+        X2 = Variable(batch_gw[0].type(Tensor)).to(device, dtype=torch.float32)
 
         # Adversarial ground truths
         valid = Variable(Tensor(np.ones((X1.size(0), *D1.output_shape))), requires_grad=False)
