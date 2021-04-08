@@ -42,6 +42,7 @@ parser.add_argument("--dim", type=int, default=64, help="number of filters in fi
 opt = parser.parse_args()
 print(opt)
 
+cuda = True if torch.cuda.is_available() else False
 device = torch.device("cuda", index=0)
 
 # Create sample and checkpoint directories
@@ -64,8 +65,8 @@ E2 = Encoder(dim=opt.dim, n_downsample=opt.n_downsample, shared_block=shared_E).
 shared_G = ResidualBlock(features=shared_dim).to(device)
 G1 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G).to(device)
 G2 = Generator(dim=opt.dim, n_upsample=opt.n_downsample, shared_block=shared_G).to(device)
-D1 = Discriminator(input_shape).to(device)
-D2 = Discriminator(input_shape).to(device)
+D1 = Discriminator(input_shape,dim=opt.dim).to(device)
+D2 = Discriminator(input_shape,dim=opt.dim).to(device)
 
 if opt.epoch != 0:
     # Load pretrained models
@@ -121,14 +122,17 @@ def sample_images(batches_done):
     """Saves a generated sample from the test set"""
     img_skel = next(iter(skel_val))
     img_gw = next(iter(gw_val))
-    X1 = Variable(img_skel.type(Tensor))
-    X2 = Variable(img_gw.type(Tensor))
+    X1 = Variable(img_skel[0].type(Tensor))
+    X2 = Variable(img_gw[0].type(Tensor))
     _, Z1 = E1(X1)
     _, Z2 = E2(X2)
     fake_X1 = G1(Z2)
     fake_X2 = G2(Z1)
-    img_sample = torch.cat((X1.data, fake_X2.data, X2.data, fake_X1.data), 0)
-    save_image(img_sample, "images/%s/%s.png" % (opt.dataset_name, batches_done), nrow=5, normalize=True)
+    #img_sample = torch.cat((X1.data, fake_X2.data, X2.data, fake_X1.data), 0)
+    save_image(X1[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"X1_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(X2[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"X2_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(fake_X1[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"fake_X1_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(fake_X2[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"fake_X2_" + str(batches_done)), nrow=5, normalize=True)
 
 
 def compute_kl(mu):
@@ -233,15 +237,15 @@ for epoch in range(opt.epoch, opt.n_epochs):
         # --------------
 
         # Determine approximate time left
-        batches_done = epoch * len(dataloader) + i
-        batches_left = opt.n_epochs * len(dataloader) - batches_done
+        batches_done = epoch * len(skel_train) + i
+        batches_left = opt.n_epochs * len(skel_train) - batches_done
         time_left = datetime.timedelta(seconds=batches_left * (time.time() - prev_time))
         prev_time = time.time()
 
         # Print log
         sys.stdout.write(
             "\r[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] ETA: %s"
-            % (epoch, opt.n_epochs, i, len(dataloader), (loss_D1 + loss_D2).item(), loss_G.item(), time_left)
+            % (epoch, opt.n_epochs, i, len(skel_train), (loss_D1 + loss_D2).item(), loss_G.item(), time_left)
         )
 
         # If at sample interval save image

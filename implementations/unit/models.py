@@ -55,14 +55,14 @@ class ResidualBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels=1, dim=32, n_downsample=2, shared_block=None):
+    def __init__(self, in_channels=1, dim=64, n_downsample=2, shared_block=None):
         super(Encoder, self).__init__()
 
         # Initial convolution block
         layers = [
             #nn.ReflectionPad3d(3),
             nn.Conv3d(in_channels, dim, 7),
-            nn.InstanceNorm3d(32),
+            nn.InstanceNorm3d(dim),
             nn.LeakyReLU(0.2, inplace=True),
         ]
 
@@ -95,10 +95,11 @@ class Encoder(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, out_channels=1, dim=32, n_upsample=2, shared_block=None):
+    def __init__(self, out_channels=1, dim=64, n_upsample=2, shared_block=None):
         super(Generator, self).__init__()
 
         self.shared_block = shared_block
+        self.dim=dim
 
         layers = []
         dim = dim * 2 ** n_upsample
@@ -109,7 +110,7 @@ class Generator(nn.Module):
         # Upsampling
         for _ in range(n_upsample):
             layers += [
-                nn.ConvTranspose3d(dim, dim // 2, 4, stride=2, padding=1),
+                nn.ConvTranspose3d(dim, dim // 2, 4, stride=2, padding=0),
                 nn.InstanceNorm3d(dim // 2),
                 nn.LeakyReLU(0.2, inplace=True),
             ]
@@ -123,10 +124,15 @@ class Generator(nn.Module):
         self.model_blocks2 = nn.Sequential(*layers2)
 
     def forward(self, x):
+        #print("début : ", x.shape)
         x = self.shared_block(x)
+        #print("après shared : ",x.shape)
         x = self.model_blocks1(x)
-        x = F.pad(x,(3,3,3,3,3,3))
+        #print("après block 1 : ",x.shape)
+        x = F.pad(x,(6,5,6,5,5,5))
+        #print("après pad : ",x.shape)
         x = self.model_blocks2(x)
+        #print("après block2 : ",x.shape)
         return x
 
 
@@ -136,12 +142,12 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, input_shape):
+    def __init__(self, input_shape,dim):
         super(Discriminator, self).__init__()
         channels, height, width, depth = input_shape
         # Calculate output of image discriminator (PatchGAN)
         #self.output_shape = (1, height // 2 ** 4, width // 2 ** 4, depth // 2 ** 4)
-        self.output_shape = (1, 7, 10, 8)
+        self.output_shape = (1, 8, 11, 9)
 
         def discriminator_block(in_filters, out_filters, normalize=True):
             """Returns downsampling layers of each discriminator block"""
@@ -152,11 +158,11 @@ class Discriminator(nn.Module):
             return layers
 
         self.model = nn.Sequential(
-            *discriminator_block(channels, 32, normalize=False),
-            *discriminator_block(32, 64),
-            *discriminator_block(64, 128),
-            *discriminator_block(128, 256),
-            nn.Conv3d(256, 1, 3, padding=1)
+            *discriminator_block(channels, dim, normalize=False),
+            *discriminator_block(dim, dim*2),
+            *discriminator_block(dim*2, dim*4),
+            *discriminator_block(dim*4, dim*8),
+            nn.Conv3d(dim * 8, 1, 3, padding=1)
         )
 
     def forward(self, img):
