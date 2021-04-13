@@ -147,7 +147,7 @@ class Discriminator(nn.Module):
         channels, height, width, depth = input_shape
         # Calculate output of image discriminator (PatchGAN)
         #self.output_shape = (1, height // 2 ** 4, width // 2 ** 4, depth // 2 ** 4)
-        self.output_shape = (1, 8, 11, 9)
+        self.output_shape = (1, 4, 5, 2)
 
         def discriminator_block(in_filters, out_filters, normalize=True):
             """Returns downsampling layers of each discriminator block"""

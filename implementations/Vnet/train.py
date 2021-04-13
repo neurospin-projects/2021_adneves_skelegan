@@ -17,8 +17,6 @@ import torchvision.transforms as transforms
 
 from torch.utils.data import DataLoader
 
-import torchbiomed.datasets as dset
-import torchbiomed.transforms as biotransforms
 import torchbiomed.loss as bioloss
 import torchbiomed.utils as utils
 
@@ -30,24 +28,12 @@ import shutil
 
 import setproctitle
 
+from create_sets import *
 import vnet
 import make_graph
 from functools import reduce
 import operator
 
-
-#nodule_masks = "normalized_mask_5_0"
-#lung_masks = "normalized_seg_lungs_5_0"
-#ct_images = "normalized_CT_5_0"
-#target_split = [1, 1, 1]
-#ct_targets = nodule_masks
-
-
-nodule_masks = "normalized_brightened_CT_2_5"
-lung_masks = "inferred_seg_lungs_2_5"
-ct_images = "luna16_ct_normalized"
-ct_targets = nodule_masks
-target_split = [2, 2, 2]
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -102,10 +88,10 @@ def noop(x):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batchSz', type=int, default=10)
+    parser.add_argument('--batchSz', type=int, default=1)
     parser.add_argument('--dice', action='store_true')
-    parser.add_argument('--ngpu', type=int, default=1)
-    parser.add_argument('--nEpochs', type=int, default=300)
+    parser.add_argument('--ngpu', type=int, default=0)
+    parser.add_argument('--nEpochs', type=int, default=10)
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
@@ -176,24 +162,6 @@ def main():
         shutil.rmtree(args.save)
     os.makedirs(args.save, exist_ok=True)
 
-    # LUNA16 dataset isotropically scaled to 2.5mm^3
-    # and then truncated or zero-padded to 160x128x160
-    normMu = [-642.794]
-    normSigma = [459.512]
-    normTransform = transforms.Normalize(normMu, normSigma)
-
-    trainTransform = transforms.Compose([
-        transforms.ToTensor(),
-        normTransform
-    ])
-    testTransform = transforms.Compose([
-        transforms.ToTensor(),
-        normTransform
-    ])
-    if ct_targets == nodule_masks:
-        masks = lung_masks
-    else:
-        masks = None
 
     if args.inference != '':
         if not args.resume:
@@ -211,21 +179,25 @@ def main():
         return
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-    print("loading training set")
-    trainSet = dset.LUNA16(root='luna16', images=ct_images, targets=ct_targets,
-                           mode="train", transform=trainTransform, 
+    print("loading training and test set")
+
+    '''trainSet = dset.LUNA16(root='luna16', images=ct_images, targets=ct_targets,
+                           mode="train", transform=trainTransform,
                            class_balance=class_balance, split=target_split, seed=args.seed, masks=masks)
     trainLoader = DataLoader(trainSet, batch_size=batch_size, shuffle=True, **kwargs)
-    print("loading test set")
+
     testLoader = DataLoader(
         dset.LUNA16(root='luna16', images=ct_images, targets=ct_targets,
                     mode="test", transform=testTransform, seed=args.seed, masks=masks, split=target_split),
         batch_size=batch_size, shuffle=False, **kwargs)
+'''
 
-    target_mean = trainSet.target_mean()
+    _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = args.batchSz)
+    _, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = args.batchSz)
+
+    target_mean = 50
     bg_weight = target_mean / (1. + target_mean)
     fg_weight = 1. - bg_weight
-    print(bg_weight)
     class_weights = torch.FloatTensor([bg_weight, fg_weight])
     if args.cuda:
         class_weights = class_weights.cuda()
@@ -243,8 +215,8 @@ def main():
     err_best = 100.
     for epoch in range(1, args.nEpochs + 1):
         adjust_opt(args.opt, optimizer, epoch)
-        train(args, epoch, model, trainLoader, optimizer, trainF, class_weights)
-        err = test(args, epoch, model, testLoader, optimizer, testF, class_weights)
+        train(args, epoch, model,gw_train, skel_train, optimizer, trainF, class_weights)
+        err = test(args, epoch,skel_test, gw_test, model, optimizer, testF, class_weights)
         is_best = False
         if err < best_prec1:
             is_best = True
@@ -253,20 +225,20 @@ def main():
                          'state_dict': model.state_dict(),
                          'best_prec1': best_prec1},
                         is_best, args.save, "vnet")
-        os.system('./plot.py {} {} &'.format(len(trainLoader), args.save))
+        os.system('./plot.py {} {} &'.format(len(gw_train), args.save))
 
     trainF.close()
     testF.close()
 
 
-def train_nll(args, epoch, model, trainLoader, optimizer, trainF, weights):
+def train_nll(args, epoch, model, gw_train, skel_train, optimizer, trainF, weights):
     model.train()
     nProcessed = 0
-    nTrain = len(trainLoader.dataset)
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
+    nTrain = len(gw_train)
+    batch_idx = 0
+    for batch_skel, batch_gw in zip(skel_train, gw_train):
+        data = Variable(batch_skel[0].type(Tensor)).to(device, dtype=torch.float32)
+        target = Variable(batch_gw[0].type(Tensor)).to(device, dtype=torch.float32)
         optimizer.zero_grad()
         output = model(data)
         target = target.view(target.numel())
@@ -279,25 +251,26 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF, weights):
         pred = output.data.max(1)[1]  # get the index of the max log-probability
         incorrect = pred.ne(target.data).cpu().sum()
         err = 100.*incorrect/target.numel()
-        partialEpoch = epoch + batch_idx / len(trainLoader) - 1
+        partialEpoch = epoch + batch_idx / len(gw_train) - 1
         print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}\t Dice: {:.6f}'.format(
-            partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(trainLoader),
+            partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(gw_train),
             loss.data[0], err, dice_loss))
 
         trainF.write('{},{},{}\n'.format(partialEpoch, loss.data[0], err))
         trainF.flush()
+        batch_idx += 1
 
 
-def test_nll(args, epoch, model, testLoader, optimizer, testF, weights):
+def test_nll(args, epoch, skel_test, gw_test, model, optimizer, testF, weights):
     model.eval()
     test_loss = 0
     dice_loss = 0
     incorrect = 0
     numel = 0
-    for data, target in testLoader:
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
+    batch_idx = 0
+    for batch_skel, batch_gw in zip(skel_test, gw_test):
+        data = Variable(batch_skel[0].type(Tensor)).to(device, dtype=torch.float32)
+        target = Variable(batch_gw[0].type(Tensor)).to(device, dtype=torch.float32)
         target = target.view(target.numel())
         numel += target.numel()
         output = model(data)
@@ -305,9 +278,10 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF, weights):
         dice_loss += bioloss.dice_error(output, target)
         pred = output.data.max(1)[1]  # get the index of the max log-probability
         incorrect += pred.ne(target.data).cpu().sum()
+        batch_idx += 1
 
-    test_loss /= len(testLoader)  # loss function already averages over batch size
-    dice_loss /= len(testLoader)
+    test_loss /= len(gw_test)  # loss function already averages over batch size
+    dice_loss /= len(gw_test)
     err = 100.*incorrect/numel
     print('\nTest set: Average loss: {:.4f}, Error: {}/{} ({:.3f}%) Dice: {:.6f}\n'.format(
         test_loss, incorrect, numel, err, dice_loss))
@@ -317,14 +291,14 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF, weights):
     return err
 
 
-def train_dice(args, epoch, model, trainLoader, optimizer, trainF, weights):
+def train_dice(args, epoch, model, skel_train, gw_train, optimizer, trainF, weights):
     model.train()
     nProcessed = 0
-    nTrain = len(trainLoader.dataset)
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
+    batch_idx = 0
+    nTrain = len(gw_train)
+    for batch_skel, batch_gw in zip(skel_train, gw_train):
+        data = Variable(batch_skel[0].type(Tensor)).to(device, dtype=torch.float32)
+        target = Variable(batch_gw[0].type(Tensor)).to(device, dtype=torch.float32)
         optimizer.zero_grad()
         output = model(data)
         loss = bioloss.dice_loss(output, target)
@@ -333,30 +307,30 @@ def train_dice(args, epoch, model, trainLoader, optimizer, trainF, weights):
         optimizer.step()
         nProcessed += len(data)
         err = 100.*(1. - loss.data[0])
-        partialEpoch = epoch + batch_idx / len(trainLoader) - 1
+        partialEpoch = epoch + batch_idx / len(gw_train) - 1
         print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.8f}\tError: {:.8f}'.format(
-            partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(trainLoader),
+            partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(gw_train),
             loss.data[0], err))
 
         trainF.write('{},{},{}\n'.format(partialEpoch, loss.data[0], err))
         trainF.flush()
+        batch_idx += 1
 
 
-def test_dice(args, epoch, model, testLoader, optimizer, testF, weights):
+def test_dice(args, epoch, model,skel_test, gw_test, optimizer, testF, weights):
     model.eval()
     test_loss = 0
     incorrect = 0
-    for data, target in testLoader:
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
+    for batch_idx, batch_skel, batch_gw in enumerate(zip(skel_test, gw_test)):
+        data = Variable(batch_skel[0].type(Tensor)).to(device, dtype=torch.float32)
+        target = Variable(batch_gw[0].type(Tensor)).to(device, dtype=torch.float32)
         output = model(data)
         loss = bioloss.dice_loss(output, target).data[0]
         test_loss += loss
         incorrect += (1. - loss)
 
-    test_loss /= len(testLoader)  # loss function already averages over batch size
-    nTotal = len(testLoader)
+    test_loss /= len(gw_test)  # loss function already averages over batch size
+    nTotal = len(gw_test)
     err = 100.*incorrect/nTotal
     print('\nTest set: Average Dice Coeff: {:.4f}, Error: {}/{} ({:.0f}%)\n'.format(
         test_loss, incorrect, nTotal, err))

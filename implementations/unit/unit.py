@@ -16,6 +16,7 @@ from torch.autograd import Variable
 from create_sets import *
 from models import *
 from datasets import *
+from display_loss import *
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -115,8 +116,8 @@ lr_scheduler_D2 = torch.optim.lr_scheduler.LambdaLR(
 Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
 
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size)
-_, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = opt.batch_size)
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
+_, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = opt.batch_size, nb=1000)
 
 def sample_images(batches_done):
     """Saves a generated sample from the test set"""
@@ -129,10 +130,10 @@ def sample_images(batches_done):
     fake_X1 = G1(Z2)
     fake_X2 = G2(Z1)
     #img_sample = torch.cat((X1.data, fake_X2.data, X2.data, fake_X1.data), 0)
-    save_image(X1[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"X1_" + str(batches_done)), nrow=5, normalize=True)
-    save_image(X2[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"X2_" + str(batches_done)), nrow=5, normalize=True)
-    save_image(fake_X1[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"fake_X1_" + str(batches_done)), nrow=5, normalize=True)
-    save_image(fake_X2[0,0,100,:,:], "images/%s/%s.png" % (opt.dataset_name,"fake_X2_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(X1[0,0,50,:,:], "images/%s/%s.png" % (opt.dataset_name,"X1_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(X2[0,0,50,:,:], "images/%s/%s.png" % (opt.dataset_name,"X2_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(fake_X1[0,0,50,:,:], "images/%s/%s.png" % (opt.dataset_name,"fake_X1_" + str(batches_done)), nrow=5, normalize=True)
+    save_image(fake_X2[0,0,50,:,:], "images/%s/%s.png" % (opt.dataset_name,"fake_X2_" + str(batches_done)), nrow=5, normalize=True)
 
 
 def compute_kl(mu):
@@ -144,7 +145,8 @@ def compute_kl(mu):
 # ----------
 #  Training
 # ----------
-
+loss_disc = []
+loss_gen = []
 prev_time = time.time()
 for epoch in range(opt.epoch, opt.n_epochs):
     i = 0
@@ -215,22 +217,17 @@ for epoch in range(opt.epoch, opt.n_epochs):
         # -----------------------
 
         optimizer_D1.zero_grad()
-
-        loss_D1 = criterion_GAN(D1(X1), valid) + criterion_GAN(D1(fake_X1.detach()), fake)
-
-        loss_D1.backward()
-        optimizer_D1.step()
-
-        # -----------------------
-        #  Train Discriminator 2
-        # -----------------------
-
         optimizer_D2.zero_grad()
 
+        loss_D1 = criterion_GAN(D1(X1), valid) + criterion_GAN(D1(fake_X1.detach()), fake)
         loss_D2 = criterion_GAN(D2(X2), valid) + criterion_GAN(D2(fake_X2.detach()), fake)
 
+        loss_D1.backward()
         loss_D2.backward()
-        optimizer_D2.step()
+
+        if epoch % 3 == 1:
+            optimizer_D1.step()
+            optimizer_D2.step()
 
         # --------------
         #  Log Progress
@@ -247,7 +244,8 @@ for epoch in range(opt.epoch, opt.n_epochs):
             "\r[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] ETA: %s"
             % (epoch, opt.n_epochs, i, len(skel_train), (loss_D1 + loss_D2).item(), loss_G.item(), time_left)
         )
-
+        loss_disc += (loss_D1 + loss_D2).item()
+        loss_gen += loss_G.item()
         # If at sample interval save image
         if batches_done % opt.sample_interval == 0:
             sample_images(batches_done)
@@ -265,3 +263,4 @@ for epoch in range(opt.epoch, opt.n_epochs):
         torch.save(G2.state_dict(), "saved_models/%s/G2_%d.pth" % (opt.dataset_name, epoch))
         torch.save(D1.state_dict(), "saved_models/%s/D1_%d.pth" % (opt.dataset_name, epoch))
         torch.save(D2.state_dict(), "saved_models/%s/D2_%d.pth" % (opt.dataset_name, epoch))
+display_loss(loss_disc, loss_gen)
