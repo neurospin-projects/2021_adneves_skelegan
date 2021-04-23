@@ -185,29 +185,33 @@ for epoch in range(opt.epoch, opt.n_epochs):
 
         # Losses
         loss_GAN_1 = lambda_0 * criterion_GAN(D1(fake_X1), valid)
-        loss_GAN_2 = lambda_0 * criterion_GAN(D2(fake_X2), valid)
+        #loss_GAN_2 = lambda_0 * criterion_GAN(D2(fake_X2), valid)
         loss_KL_1 = lambda_1 * compute_kl(mu1)
         loss_KL_2 = lambda_1 * compute_kl(mu2)
-        loss_ID_1 = lambda_2 * criterion_pixel(recon_X1, X1)
-        loss_ID_2 = lambda_2 * criterion_pixel(recon_X2, X2)
-        loss_KL_1_ = lambda_3 * compute_kl(mu1_)
-        loss_KL_2_ = lambda_3 * compute_kl(mu2_)
-        loss_cyc_1 = lambda_4 * criterion_pixel(cycle_X1, X1)
-        loss_cyc_2 = lambda_4 * criterion_pixel(cycle_X2, X2)
 
+        #loss_cyc_1 = lambda_4 * criterion_pixel(cycle_X1, X1)
+        #loss_cyc_2 = lambda_4 * criterion_pixel(cycle_X2, X2)
+
+        pred = X2.data.max(1)[1])
+        X1_flat= X1.view(X1.numel())
+        #loss = F.nll_loss(output, target, weight=weights)
+        loss_t = nn.CrossEntropyLoss()
+        loss_bi= loss_t(pred,X1_flat)
         # Total loss
         loss_G = (
             loss_KL_1
             + loss_KL_2
-            + loss_ID_1
-            + loss_ID_2
+        #    + loss_ID_1
+        #    + loss_ID_2
             + loss_GAN_1
-            + loss_GAN_2
+        #    + loss_GAN_2
             + loss_KL_1_
             + loss_KL_2_
             + loss_cyc_1
             + loss_cyc_2
+            + loss_bi
         )
+
 
         loss_G.backward()
         optimizer_G.step()
@@ -222,12 +226,13 @@ for epoch in range(opt.epoch, opt.n_epochs):
         loss_D1 = criterion_GAN(D1(X1), valid) + criterion_GAN(D1(fake_X1.detach()), fake)
         loss_D2 = criterion_GAN(D2(X2), valid) + criterion_GAN(D2(fake_X2.detach()), fake)
 
-        loss_D1.backward()
-        loss_D2.backward()
 
-        if epoch % 3 == 1:
-            optimizer_D1.step()
-            optimizer_D2.step()
+
+        loss_D1.backward()
+        optimizer_D1.step()
+
+        loss_D2.backward()
+        optimizer_D2.step()
 
         # --------------
         #  Log Progress
@@ -244,8 +249,8 @@ for epoch in range(opt.epoch, opt.n_epochs):
             "\r[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] ETA: %s"
             % (epoch, opt.n_epochs, i, len(skel_train), (loss_D1 + loss_D2).item(), loss_G.item(), time_left)
         )
-        loss_disc += (loss_D1 + loss_D2).item()
-        loss_gen += loss_G.item()
+        loss_disc += [(loss_D1 + loss_D2).item()]
+        loss_gen += [loss_G.item()]
         # If at sample interval save image
         if batches_done % opt.sample_interval == 0:
             sample_images(batches_done)

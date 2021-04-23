@@ -19,7 +19,8 @@ class ContBatchNorm3d(nn.modules.batchnorm._BatchNorm):
         if input.dim() != 5:
             raise ValueError('expected 5D input (got {}D input)'
                              .format(input.dim()))
-        super(ContBatchNorm3d, self)._check_input_dim(input)
+        #super(ContBatchNorm3d, self)._check_input_dim(input)
+        super(ContBatchNorm3d, self)
 
     def forward(self, input):
         self._check_input_dim(input)
@@ -59,7 +60,7 @@ class InputTransition(nn.Module):
         out = self.bn1(self.conv1(x))
         # split input in to 16 channels
         x16 = torch.cat((x, x, x, x, x, x, x, x,
-                         x, x, x, x, x, x, x, x), 0)
+                         x, x, x, x, x, x, x, x), 1)
         out = self.relu1(torch.add(out, x16))
         return out
 
@@ -111,10 +112,10 @@ class UpTransition(nn.Module):
 class OutputTransition(nn.Module):
     def __init__(self, inChans, elu, nll):
         super(OutputTransition, self).__init__()
-        self.conv1 = nn.Conv3d(inChans, 2, kernel_size=5, padding=2)
-        self.bn1 = ContBatchNorm3d(2)
-        self.conv2 = nn.Conv3d(2, 2, kernel_size=1)
-        self.relu1 = ELUCons(elu, 2)
+        self.conv1 = nn.Conv3d(inChans, 6, kernel_size=5, padding=2)
+        self.bn1 = ContBatchNorm3d(6)
+        self.conv2 = nn.Conv3d(6, 3, kernel_size=1)
+        self.relu1 = ELUCons(elu, 6)
         if nll:
             self.softmax = F.log_softmax
         else:
@@ -124,11 +125,10 @@ class OutputTransition(nn.Module):
         # convolve 32 down to 2 channels
         out = self.relu1(self.bn1(self.conv1(x)))
         out = self.conv2(out)
-
         # make channels the last axis
         out = out.permute(0, 2, 3, 4, 1).contiguous()
         # flatten
-        out = out.view(out.numel() // 2, 2)
+        out = out.view(out.numel() // 3 , 3)
         out = self.softmax(out)
         # treat channel 0 as the predicted output
         return out
