@@ -232,7 +232,6 @@ def main():
         adjust_opt(args.opt, optimizer, epoch)
         loss_e = train(args, epoch, model,gw_train, skel_train, optimizer, trainF, class_weights)
         loss += loss_e
-        display_loss_norm(loss)
         err = test(args, epoch,skel_test, gw_test, model, optimizer, testF, class_weights)
         is_best = False
         if err < best_prec1:
@@ -242,16 +241,9 @@ def main():
                          'state_dict': model.state_dict(),
                          'best_prec1': best_prec1},
                         is_best, args.save, "vnet")
+    display_loss_norm(loss)
     trainF.close()
     testF.close()
-
-def is_nul(im):
-    shape= im.shape
-    for x in range(shape[3]):
-        for y in range(shape[4]):
-            if im[0,0,26,x,y] != 0 :
-                return False
-    return True
 
 def train_nll(args, epoch, model, gw_train, skel_train, optimizer, trainF, weights):
     model.train()
@@ -262,7 +254,6 @@ def train_nll(args, epoch, model, gw_train, skel_train, optimizer, trainF, weigh
     for batch_skel, batch_gw in zip(skel_train, gw_train):
         data = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
         target = Variable(batch_gw[0].type(torch.Tensor)).to(device, dtype=torch.long)
-        print('target n : ', str(batch_idx) + '  ' + str(is_nul(target)))
         target_size = target.shape
         target_flat= target.view(target.numel())
         optimizer.zero_grad()
