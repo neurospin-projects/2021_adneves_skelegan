@@ -207,8 +207,8 @@ def main():
         batch_size=batch_size, shuffle=False, **kwargs)
 '''
 
-    _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = args.batchSz, nb=1000)
-    _, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = args.batchSz,nb=1000)
+    '''_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = args.batchSz, nb=1000)
+    _, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = args.batchSz,nb=1000)'''
     target_mean = 50
     bg_weight = target_mean / (1. + target_mean)
     fg_weight = 1. - bg_weight
@@ -224,15 +224,15 @@ def main():
     elif args.opt == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), weight_decay=weight_decay)
 
-    trainF = open(os.path.join(args.save, 'train.csv'), 'w')
-    testF = open(os.path.join(args.save, 'test.csv'), 'w')
     err_best = 100.
     loss = []
     for epoch in range(1, args.nEpochs + 1):
+        _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = args.batchSz, nb=1000)
+        _, gw_train, gw_val, gw_test = main_create('gw','L',batch_size = args.batchSz,nb=1000)
         adjust_opt(args.opt, optimizer, epoch)
-        loss_e = train(args, epoch, model,gw_train, skel_train, optimizer, trainF, class_weights)
+        loss_e = train(args, epoch, model,gw_train, skel_train, optimizer, class_weights)
         loss += loss_e
-        err = test(args, epoch,skel_test, gw_test, model, optimizer, testF, class_weights)
+        err = test(args, epoch,skel_test, gw_test, model, optimizer, class_weights)
         is_best = False
         if err < best_prec1:
             is_best = True
@@ -242,10 +242,10 @@ def main():
                          'best_prec1': best_prec1},
                         is_best, args.save, "vnet")
     display_loss_norm(loss)
-    trainF.close()
-    testF.close()
 
-def train_nll(args, epoch, model, gw_train, skel_train, optimizer, trainF, weights):
+
+
+def train_nll(args, epoch, model, gw_train, skel_train, optimizer, weights):
     model.train()
     nProcessed = 0
     nTrain = len(gw_train)
@@ -259,10 +259,10 @@ def train_nll(args, epoch, model, gw_train, skel_train, optimizer, trainF, weigh
         optimizer.zero_grad()
         output = model(data)
         pred = output.data.max(1)[1]
-        for item in output:
+        '''for item in output:
             max= torch.argmax(item)
             item = [0,0,0]
-            item[max] = 1
+            item[max] = 1'''
         #loss = F.nll_loss(output, target, weight=weights)
         loss_t = nn.CrossEntropyLoss()
         loss= loss_t(output, target_flat)
@@ -270,29 +270,28 @@ def train_nll(args, epoch, model, gw_train, skel_train, optimizer, trainF, weigh
         loss.backward()
         optimizer.step()
         if batch_idx % 10 == 0:
+            print('enregistrement photo : ', batch_idx)
             image= pred.view(target_size)
             image = image.type(torch.float32)
             target_im = target.type(torch.float32)
-            save_image(data[0,0,25,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","data" + str(batch_idx)), nrow=5, normalize=True)
-            save_image(target_im[0,0,25,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","target" + str(batch_idx)), nrow=5, normalize=True)
-            save_image(image[0,0,25,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","gw" + str(batch_idx)), nrow=5, normalize=True)
+            save_image(data[0,0,50,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","data" + str(epoch) + '_' + str(batch_idx)), nrow=5, normalize=True)
+            save_image(target_im[0,0,50,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","target" + str(epoch) + '_' + str(batch_idx)), nrow=5, normalize=True)
+            save_image(image[0,0,50,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","gw" + str(epoch) + '_' + str(batch_idx)), nrow=5, normalize=True)
             list_loss_ep += [loss]
 
         nProcessed += len(data)
         incorrect = pred.ne(target_flat.data).cpu().sum()
         err = 100.*incorrect/target.numel()
         partialEpoch = epoch + batch_idx / len(gw_train) - 1
-        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}'.format(
+        print('Epoque: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}'.format(
             partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(gw_train),
             loss, err))
 
-        trainF.write('{},{},{}\n'.format(partialEpoch, loss, err))
-        trainF.flush()
         batch_idx += 1
     return list_loss_ep
 
 
-def test_nll(args, epoch, skel_test, gw_test, model, optimizer, testF, weights):
+def test_nll(args, epoch, skel_test, gw_test, model, optimizer, weights):
     print('go le test')
     model.eval()
     test_loss = 0
@@ -302,16 +301,16 @@ def test_nll(args, epoch, skel_test, gw_test, model, optimizer, testF, weights):
     batch_idx = 0
     for batch_skel, batch_gw in zip(skel_test, gw_test):
         print('testing batch : ', batch_idx)
-        data = Variable(batch_skel[0].type(torch.torch.Tensor)).to(device, dtype=torch.float32)
-        target = Variable(batch_gw[0].type(torch.torch.Tensor)).to(device, dtype=torch.long)
-        target_flat= target.view(target.numel())
-        target_size = target.shape
+        data_test = Variable(batch_skel[0].type(torch.torch.Tensor)).to(device, dtype=torch.float32)
+        target_test = Variable(batch_gw[0].type(torch.torch.Tensor)).to(device, dtype=torch.long)
+        target_flat= target_test.view(target_test.numel())
+        target_size = target_test.shape
         optimizer.zero_grad()
-        output = model(data)
+        output = model(data_test)
         pred = output.data.max(1)[1]
         #loss = F.nll_loss(output, target, weight=weights)
         loss_t = nn.CrossEntropyLoss()
-        numel += target.numel()
+        numel += target_test.numel()
         test_loss += loss_t(output, target_flat)
         incorrect += pred.ne(target_flat.data).cpu().sum()
         batch_idx += 1
@@ -322,8 +321,6 @@ def test_nll(args, epoch, skel_test, gw_test, model, optimizer, testF, weights):
     print('\nTest set: Average loss: {:.4f}, Error: {}/{} ({:.3f}%) Dice: {:.6f}\n'.format(
         test_loss, incorrect, numel, err, dice_loss))
 
-    testF.write('{},{},{}\n'.format(epoch, test_loss, err))
-    testF.flush()
     return err
 
 
