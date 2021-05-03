@@ -21,6 +21,7 @@ device = torch.device("cuda", index=0)
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--generation", type=int, default = 0)
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
@@ -123,7 +124,7 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
 
-        def block(in_feat, out_feat, normalize=True):
+        def block(in_feat, out_feat, normalize=False):
             layers = [nn.Linear(in_feat, out_feat)]
             if normalize:
                 layers.append(nn.BatchNorm1d(out_feat, 0.8))
@@ -193,10 +194,10 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 #  Training
 # ----------
 
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
 loss_disc, loss_gen, loss_enc = [], [], []
 for epoch in range(opt.n_epochs):
     i = 0
+    _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
     for batch_skel in skel_train:
 
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
@@ -213,7 +214,6 @@ for epoch in range(opt.n_epochs):
         optimizer_E.zero_grad()
 
         encoder_imgs = encoder(real_imgs)
-
         # -----------------
         #  Train Generator
         # -----------------
@@ -233,6 +233,7 @@ for epoch in range(opt.n_epochs):
         g_loss.backward(retain_graph=True)
         optimizer_E.step()
         optimizer_G.step()
+
 
         # ---------------------
         #  Train Discriminator
@@ -257,6 +258,7 @@ for epoch in range(opt.n_epochs):
         )
 
         batches_done = epoch * len(skel_train) + i
+        torch.cuda.empty_cache()
         if batches_done % opt.sample_interval == 0:
             save_image(target[0,0,50,:,:], "/home/ad265693/GAN/implementations/gan/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
             save_image(gen_imgs[0,0,50,:,:], "/home/ad265693/GAN/implementations/gan/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
@@ -265,3 +267,30 @@ save_checkpoint({'epoch': epoch,
                      'state_dict': model.state_dict(),
                      'best_prec1': best_prec1},
                      opt.save, "gan")
+
+
+
+#### TEST
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
+loss_enc=0
+for batch_skel in skel_test:
+    target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+
+    # Configure input
+    real_imgs = Variable(target.type(Tensor))
+    encoder_imgs = encoder(real_imgs)
+
+    # Generate a batch of images
+    gen_imgs = generator(encoder_imgs)
+
+    e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
+
+    loss_enc += e_loss
+print('loss de reconstruction en test : ', loss_enc)
+
+## génération de squelettes nouveaux
+if opt.generation !=0:
+    for new_im in range(opt.generation):
+        z = Variable(Tensor(np.random.normal(0, 1, (opt.batch_size, opt.latent_dim))))
+        gen_imgs = generator(z)
+        save_image(gen_imgs[0,0,50,:,:], "/home/ad265693/GAN/implementations/gan/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)

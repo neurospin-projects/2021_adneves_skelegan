@@ -36,16 +36,6 @@ import torch
 
 device = torch.device("cuda", index=0)
 
-def max_search(input):
-    _,_,x,y,z = input.shape
-    max_list=[]
-    for i in range(x):
-        for j in range(y):
-            for k in range(z):
-                if input[0,0,i,j,k] not in max_list:
-                    max_list += [int(input[0,0,i,j,k])]
-
-    return 'max_list : ', max_list
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv3d') != -1:
