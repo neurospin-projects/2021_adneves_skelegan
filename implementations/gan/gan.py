@@ -37,11 +37,11 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
 opt = parser.parse_args()
 print(opt)
 
-if os.path.exists(opt.save):
-    shutil.rmtree(opt.save)
-os.makedirs(opt.save, exist_ok=True)
+if os.path.exists(join('/neurospin/dico/adneves/gan_res/',opt.save)):
+    shutil.rmtree(join('/neurospin/dico/adneves/gan_res/',opt.save))
+os.makedirs(join('/neurospin/dico/adneves/gan_res/',opt.save), exist_ok=True)
 try:
-    os.mkdir(join(opt.save, 'images'))
+    os.mkdir(join('/neurospin/dico/adneves/gan_res/',opt.save, 'images'))
 except:
     print ("dossier image déjà crée")
 
@@ -49,19 +49,28 @@ img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 cuda = True if torch.cuda.is_available() else False
 
+
 def save_checkpoint(state, is_best, path, filename='checkpoint.pth.tar'):
-    prefix_save = os.path.join('/home/ad265693/GAN/implementations/Vnet', path)
+    prefix_save = os.path.join('/neurospin/dico/adneves/gan_res/', path)
     name = prefix_save + '_' + filename
     print('saving ... ')
     torch.save(state, name)
     print('model saved to ' + name)
-    if is_best:
-        shutil.copyfile(name, prefix_save + '_model_best.pth.tar')
+    shutil.copyfile(name, prefix_save + '_model_best.pth.tar')
 
 
-model = gan_model.GAN().to(device)
+model = GAN(opt.latent_dim, img_shape, opt.batch_size).to(device)
 
-model = nn.parallel.DataParallel(model, device_ids=1)
+if opt.resume:
+    if os.path.isfile(opt.resume):
+        print("=> loading checkpoint '{}'".format(opt.resume))
+        checkpoint = torch.load(opt.resume)
+        model.load_state_dict(checkpoint['state_dict'])
+        print("=> loaded checkpoint (epoch {})"
+              .format( checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(opt.resume))
+
 # Loss function
 lambda_e = 100
 criterion_pixel = torch.nn.L1Loss()
@@ -92,10 +101,10 @@ for epoch in range(opt.n_epochs):
         fake = Variable(Tensor(target.shape[0], 1).fill_(0.0), requires_grad=False)
         # Configure input
 
-        gen_imgs= model(target)
+        gen_imgs, d_real, d_fake= model(target)
         # Loss measures generator's ability to fool the discriminator
         e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
-        g_loss = adversarial_loss(discriminator(gen_imgs), valid)
+        g_loss = adversarial_loss(d_fake, valid)
 
         e_loss.backward(retain_graph=True)
         g_loss.backward(retain_graph=True)
@@ -103,8 +112,8 @@ for epoch in range(opt.n_epochs):
         optimizer_G.step()
         optimizer_D.zero_grad()
         # Measure discriminator's ability to classify real from generated samples
-        real_loss = adversarial_loss(model.Discriminator(real_imgs), valid)
-        fake_loss = adversarial_loss(model.Discriminator(gen_imgs.detach()), fake)
+        real_loss = adversarial_loss(d_real, valid)
+        fake_loss = adversarial_loss(d_fake, fake)
         d_loss = (real_loss + fake_loss) / 2
 
         d_loss.backward(retain_graph=True)
@@ -115,14 +124,14 @@ for epoch in range(opt.n_epochs):
         i += 1
 
         print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [E loss: %f]"
+            "[Epoque %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [E loss: %f]"
             % (epoch, opt.n_epochs, i, len(skel_train), d_loss.item(), g_loss.item(), e_loss.item())
         )
 
         batches_done = epoch * len(skel_train) + i
         if batches_done % opt.sample_interval == 0:
-            save_image(target[0,0,50,:,:], "/home/ad265693/GAN/implementations/gan/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
-            save_image(gen_imgs[0,0,50,:,:], "/home/ad265693/GAN/implementations/gan/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+            save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+            save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
 display_loss(loss_disc, loss_gen,loss_enc)
 save_checkpoint({'epoch': epoch,
                      'state_dict': model.state_dict(),
@@ -132,17 +141,13 @@ save_checkpoint({'epoch': epoch,
 
 
 #### TEST
+print('début phase de test')
 _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
 loss_enc=0
 for batch_skel in skel_test:
     target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-
-    # Configure input
     real_imgs = Variable(target.type(Tensor))
-    encoder_imgs = encoder(real_imgs)
-
-    # Generate a batch of images
-    gen_imgs = generator(encoder_imgs)
+    gen_imgs, d_real, d_fake= model(target)
 
     e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
 
@@ -151,7 +156,12 @@ print('loss de reconstruction en test : ', loss_enc)
 
 ## génération de squelettes nouveaux
 if opt.generation !=0:
+    print('début phase de génération')
+    gen_n = 0
     for new_im in range(opt.generation):
         z = Variable(Tensor(np.random.normal(0, 1, (opt.batch_size, opt.latent_dim))))
-        gen_imgs = generator(z)
-        save_image(gen_imgs[0,0,50,:,:], "/home/ad265693/GAN/implementations/gan/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
+        gen_imgs = model.Generator(z)
+        save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
+        gen_n += 1
+        print("images générées %s/%s" % (gen_n,opt.generation))
+print('fini !')

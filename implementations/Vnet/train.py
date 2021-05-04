@@ -91,7 +91,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batchSz', type=int, default=1)
     parser.add_argument('--dice', action='store_true')
-    parser.add_argument('--ngpu', type=int, default=0)
+    parser.add_argument('--ngpu', type=int, default=1)
     parser.add_argument('--nEpochs', type=int, default=10)
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
