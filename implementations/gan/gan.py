@@ -50,13 +50,13 @@ img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 cuda = True if torch.cuda.is_available() else False
 
 
-def save_checkpoint(state, is_best, path, filename='checkpoint.pth.tar'):
-    prefix_save = os.path.join('/neurospin/dico/adneves/gan_res/', path)
+def save_checkpoint(epoch,state, filename='checkpoint.pth.tar'):
+    prefix_save = os.path.join('/neurospin/dico/adneves/gan_res/', opt.save)
     name = prefix_save + '_' + filename
     print('saving ... ')
     torch.save(state, name)
     print('model saved to ' + name)
-    shutil.copyfile(name, prefix_save + '_model_best.pth.tar')
+    shutil.copyfile(name, prefix_save + str(epoch) + '_model_best.pth.tar')
 
 
 model = GAN(opt.latent_dim, img_shape, opt.batch_size).to(device)
@@ -89,8 +89,11 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 
 loss_disc, loss_gen, loss_enc = [], [], []
+n_epoch = 0
 for epoch in range(opt.n_epochs):
     i = 0
+    if opt.resume:
+        n_epoch = checkpoint['epoch']
     _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
     for batch_skel in skel_train:
         torch.cuda.empty_cache()
@@ -125,7 +128,7 @@ for epoch in range(opt.n_epochs):
 
         print(
             "[Epoque %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [E loss: %f]"
-            % (epoch, opt.n_epochs, i, len(skel_train), d_loss.item(), g_loss.item(), e_loss.item())
+            % (n_epoch + epoch, opt.n_epochs+n_epoch, i, len(skel_train), d_loss.item(), g_loss.item(), e_loss.item())
         )
 
         batches_done = epoch * len(skel_train) + i
@@ -133,18 +136,19 @@ for epoch in range(opt.n_epochs):
             save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
             save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
 display_loss(loss_disc, loss_gen,loss_enc)
-save_checkpoint({'epoch': epoch,
+save_checkpoint(epoch + n_epoch,{'epoch': n_epoch + epoch,
                      'state_dict': model.state_dict(),
-                     },
-                     opt.save, "gan")
+                     })
 
 
 
 #### TEST
 print('début phase de test')
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
+print(skel_val.shape)
 loss_enc=0
-for batch_skel in skel_test:
+for batch_skel in skel_val:
+    print(batch_skel[1])
+    torch.cuda.empty_cache()
     target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
     real_imgs = Variable(target.type(Tensor))
     gen_imgs, d_real, d_fake= model(target)

@@ -6,7 +6,7 @@ def display_loss(loss_disc, loss_gen, loss_enc):
     epoch = np.arange(len(loss_gen))
 
     plt.ylabel('loss')
-    plt.xlabel('epoch')
+    plt.xlabel('batches done')
     #plt.ylim([0, 12000])
     plt.plot(epoch, loss_gen)
     plt.plot(epoch, loss_disc)
