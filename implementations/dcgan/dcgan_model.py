@@ -81,8 +81,8 @@ class Generator(nn.Module):
     def __init__(self, latent_dim,img_shape):
         super(Generator, self).__init__()
         self.latent_dim =latent_dim
-        self.init_size = img_shape[1] // 4
-        self.l1 = nn.Sequential(nn.Linear(self.latent_dim, 128 * self.init_size ** 2))
+        self.init_size = img_shape[1] // 8
+        self.l1 = nn.Sequential(nn.Linear(self.latent_dim, 128 * self.init_size ** 3))
 
         self.conv_blocks = nn.Sequential(
             nn.BatchNorm3d(128),
@@ -94,13 +94,14 @@ class Generator(nn.Module):
             nn.Conv3d(128, 64, 3, stride=1, padding=1),
             nn.BatchNorm3d(64, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.Upsample(scale_factor=2),
             nn.Conv3d(64, 1, 3, stride=1, padding=1),
             nn.Tanh(),
         )
 
     def forward(self, z):
         out = self.l1(z)
-        out = out.view(out.shape[0], 128, self.init_size, self.init_size)
+        out = out.view(out.shape[0], 128, self.init_size, self.init_size,self.init_size)
         img = self.conv_blocks(out)
         return img
 
@@ -108,7 +109,6 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, batch_size,img_shape):
         super(Discriminator, self).__init__()
-        self.batch_size = batch_size
         self.img_shape = img_shape
         def discriminator_block(in_filters, out_filters, bn=True):
             block = [nn.Conv3d(in_filters, out_filters, 3, 2, 1), nn.LeakyReLU(0.2, inplace=True), nn.Dropout3d(0.25)]
@@ -125,7 +125,7 @@ class Discriminator(nn.Module):
 
         # The height and width of downsampled image
         ds_size = img_shape[1] // 2 ** 4
-        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size ** 2, 1), nn.Sigmoid())
+        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size ** 3, 1), nn.Sigmoid())
 
     def forward(self, img):
         out = self.model(img)
@@ -139,7 +139,7 @@ class dcGAN(nn.Module):
     # the number of convolutions in each layer corresponds
     # to what is in the actual prototxt, not the intent
     def __init__(self, latent_dim, img_shape, batch_size):
-        super(GAN, self).__init__()
+        super(dcGAN, self).__init__()
         self.latent_dim = latent_dim
         self.img_shape = img_shape
         self.batch_size = batch_size

@@ -2,7 +2,7 @@ import argparse
 import os
 import numpy as np
 import math
-from gan_model import *
+from dcgan_model import *
 #import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
@@ -15,7 +15,6 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-
 device = torch.device("cuda", index=0)
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
@@ -32,14 +31,12 @@ parser.add_argument("--sample_interval", type=int, default=400, help="interval b
 parser.add_argument("--save")
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
-
-device = torch.device("cuda", index=0)
 opt = parser.parse_args()
 print(opt)
 
 if os.path.exists(join('/neurospin/dico/adneves/dcgan_res/',opt.save)):
     shutil.rmtree(join('/neurospin/dico/adneves/dcgan_res/',opt.save))
-os.makedirs(join('/neurospin/dico/adneves/dcan_res/',opt.save), exist_ok=True)
+os.makedirs(join('/neurospin/dico/adneves/dcgan_res/',opt.save), exist_ok=True)
 try:
     os.mkdir(join('/neurospin/dico/adneves/dcgan_res/',opt.save, 'images'))
 except:
