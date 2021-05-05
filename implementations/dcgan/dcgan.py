@@ -33,15 +33,15 @@ parser.add_argument("--save")
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
 
-
+device = torch.device("cuda", index=0)
 opt = parser.parse_args()
 print(opt)
 
-if os.path.exists(join('/neurospin/dico/adneves/gan_res/',opt.save)):
-    shutil.rmtree(join('/neurospin/dico/adneves/gan_res/',opt.save))
-os.makedirs(join('/neurospin/dico/adneves/gan_res/',opt.save), exist_ok=True)
+if os.path.exists(join('/neurospin/dico/adneves/dcgan_res/',opt.save)):
+    shutil.rmtree(join('/neurospin/dico/adneves/dcgan_res/',opt.save))
+os.makedirs(join('/neurospin/dico/adneves/dcan_res/',opt.save), exist_ok=True)
 try:
-    os.mkdir(join('/neurospin/dico/adneves/gan_res/',opt.save, 'images'))
+    os.mkdir(join('/neurospin/dico/adneves/dcgan_res/',opt.save, 'images'))
 except:
     print ("dossier image déjà crée")
 
@@ -51,7 +51,7 @@ cuda = True if torch.cuda.is_available() else False
 
 
 def save_checkpoint(epoch,state, filename='checkpoint.pth.tar'):
-    prefix_save = os.path.join('/neurospin/dico/adneves/gan_res/', opt.save)
+    prefix_save = os.path.join('/neurospin/dico/adneves/dcgan_res/', opt.save)
     name = prefix_save + '_' + filename
     print('saving ... ')
     torch.save(state, name)
@@ -59,7 +59,7 @@ def save_checkpoint(epoch,state, filename='checkpoint.pth.tar'):
     shutil.copyfile(name, prefix_save + '_' + str(epoch) + '_model_best.pth.tar')
 
 
-model = GAN(opt.latent_dim, img_shape, opt.batch_size).to(device)
+model = dcGAN(opt.latent_dim, img_shape, opt.batch_size).to(device)
 
 if opt.resume:
     if os.path.isfile(opt.resume):
@@ -133,8 +133,8 @@ for epoch in range(opt.n_epochs):
 
         batches_done = epoch * len(skel_train) + i
         if batches_done % opt.sample_interval == 0:
-            save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
-            save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+            save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+            save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
 display_loss(loss_disc, loss_gen,loss_enc)
 save_checkpoint(epoch + n_epoch,{'epoch': n_epoch + epoch,
                      'state_dict': model.state_dict(),
@@ -163,7 +163,7 @@ if opt.generation !=0:
     for new_im in range(opt.generation):
         z = Variable(Tensor(np.random.normal(0, 1, (opt.batch_size, opt.latent_dim))))
         gen_imgs = model.Generator(z)
-        save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/gan_res/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
+        save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
         gen_n += 1
         print("images générées %s/%s" % (gen_n,opt.generation))
 print('fini !')
