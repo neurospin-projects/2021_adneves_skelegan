@@ -29,6 +29,7 @@ parser.add_argument("--img_size", type=int, default=96, help="size of each image
 parser.add_argument("--channels", type=int, default=1, help="number of image channels")
 parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
 parser.add_argument("--save")
+parser.add_argument("--test", type=bool, default=False)
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
 opt = parser.parse_args()
@@ -60,17 +61,16 @@ model = dcGAN(opt.latent_dim, img_shape, opt.batch_size).to(device)
 
 if opt.resume:
     if os.path.isfile(opt.resume):
-        print("=> loading checkpoint '{}'".format(opt.resume))
+        print("=> chargement checkpoint '{}'".format(opt.resume))
         checkpoint = torch.load(opt.resume)
         model.load_state_dict(checkpoint['state_dict'])
-        print("=> loaded checkpoint (epoch {})"
+        print("=> chargé à l'époque n° (epoch {})"
               .format( checkpoint['epoch']))
     else:
-        print("=> no checkpoint found at '{}'".format(opt.resume))
+        print("=> pas de checkpoint trouvé '{}'".format(opt.resume))
 
 # Loss function
-lambda_e = 100
-criterion_pixel = torch.nn.L1Loss()
+criterion_pixel = torch.nn.CrossEntropyLoss()
 adversarial_loss = torch.nn.BCELoss()
 
 # Optimizers
@@ -87,7 +87,7 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 loss_disc, loss_gen, loss_enc = [], [], []
 n_epoch = 0
-for epoch in range(opt.n_epochs):
+for epoch in range(1, opt.n_epochs + 1):
     i = 0
     if opt.resume:
         n_epoch = checkpoint['epoch']
@@ -95,6 +95,7 @@ for epoch in range(opt.n_epochs):
     for batch_skel in skel_train:
         torch.cuda.empty_cache()
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+        target_flat= target.view(target.numel())
         real_imgs = Variable(target.type(Tensor))
         # Adversarial ground truths
         valid = Variable(Tensor(target.shape[0], 1).fill_(1.0), requires_grad=False)
@@ -103,7 +104,7 @@ for epoch in range(opt.n_epochs):
 
         gen_imgs, d_real, d_fake= model(target)
         # Loss measures generator's ability to fool the discriminator
-        e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
+        e_loss =  criterion_pixel(,target_flat)
         g_loss = adversarial_loss(d_fake, valid)
 
         e_loss.backward(retain_graph=True)
@@ -118,9 +119,9 @@ for epoch in range(opt.n_epochs):
 
         d_loss.backward(retain_graph=True)
         optimizer_D.step()
-        loss_disc += [d_loss]
-        loss_gen += [g_loss]
-        loss_enc += [e_loss]
+        loss_disc += [d_loss.item()]
+        loss_gen += [g_loss.item()]
+        loss_enc += [e_loss.item()]
         i += 1
 
         print(
@@ -138,20 +139,19 @@ save_checkpoint(epoch + n_epoch,{'epoch': n_epoch + epoch,
                      })
 
 
+if opt.test:
+    #### TEST
+    print('début phase de test')
+    loss_enc=0
+    for batch_skel in skel_val:
+        target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+        real_imgs = Variable(target.type(Tensor))
+        gen_imgs, d_real, d_fake= model(target)
 
-#### TEST
-print('début phase de test')
-loss_enc=0
-for batch_skel in skel_val:
-    torch.cuda.empty_cache()
-    target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-    real_imgs = Variable(target.type(Tensor))
-    gen_imgs, d_real, d_fake= model(target)
+        e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
 
-    e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
-
-    loss_enc += e_loss
-print('loss de reconstruction en test : ', loss_enc[0])
+        loss_enc += e_loss.item()
+    print('loss de reconstruction en test : ', loss_enc)
 
 ## génération de squelettes nouveaux
 if opt.generation !=0:
