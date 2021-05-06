@@ -70,7 +70,7 @@ if opt.resume:
         print("=> pas de checkpoint trouvé '{}'".format(opt.resume))
 
 # Loss function
-criterion_pixel = torch.nn.CrossEntropyLoss()
+criterion_pixel =torch.nn.CrossEntropyLoss()
 adversarial_loss = torch.nn.BCELoss()
 
 # Optimizers
@@ -95,16 +95,16 @@ for epoch in range(1, opt.n_epochs + 1):
     for batch_skel in skel_train:
         torch.cuda.empty_cache()
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-        target_flat= target.view(target.numel())
-        real_imgs = Variable(target.type(Tensor))
+        target_long = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.long)
+
         # Adversarial ground truths
         valid = Variable(Tensor(target.shape[0], 1).fill_(1.0), requires_grad=False)
         fake = Variable(Tensor(target.shape[0], 1).fill_(0.0), requires_grad=False)
         # Configure input
 
-        gen_imgs, d_real, d_fake= model(target)
+        gen_img,gen_pred, d_real, d_fake= model(target)
         # Loss measures generator's ability to fool the discriminator
-        e_loss =  criterion_pixel(,target_flat)
+        e_loss = criterion_pixel(gen_img, target_long.view(target_long.numel()))
         g_loss = adversarial_loss(d_fake, valid)
 
         e_loss.backward(retain_graph=True)
@@ -132,7 +132,7 @@ for epoch in range(1, opt.n_epochs + 1):
         batches_done = epoch * len(skel_train) + i
         if batches_done % opt.sample_interval == 0:
             save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
-            save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+            save_image(gen_pred[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
 display_loss(loss_disc, loss_gen,loss_enc)
 save_checkpoint(epoch + n_epoch,{'epoch': n_epoch + epoch,
                      'state_dict': model.state_dict(),
@@ -145,10 +145,11 @@ if opt.test:
     loss_enc=0
     for batch_skel in skel_val:
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-        real_imgs = Variable(target.type(Tensor))
-        gen_imgs, d_real, d_fake= model(target)
+        target_long = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.long)
 
-        e_loss = lambda_e * criterion_pixel(real_imgs,gen_imgs)
+        gen_img,gen_pred, d_real, d_fake= model(target)
+        # Loss measures generator's ability to fool the discriminator
+        e_loss = criterion_pixel(gen_img, target_long.view(target_long.numel()))
 
         loss_enc += e_loss.item()
     print('loss de reconstruction en test : ', loss_enc)
@@ -159,8 +160,10 @@ if opt.generation !=0:
     gen_n = 0
     for new_im in range(opt.generation):
         z = Variable(Tensor(np.random.normal(0, 1, (opt.batch_size, opt.latent_dim))))
-        gen_imgs = model.Generator(z)
-        save_image(gen_imgs[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
+        gen_img = model.Generator(z)
+        gen_pred_flat = gen_img.data.max(1)[1]
+        gen_pred= gen_pred_flat.view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
+        save_image(gen_pred[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
         gen_n += 1
         print("images générées %s/%s" % (gen_n,opt.generation))
 print('fini !')

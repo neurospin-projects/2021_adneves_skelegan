@@ -95,7 +95,8 @@ class Generator(nn.Module):
             nn.BatchNorm3d(64, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-            nn.Conv3d(64, 1, 3, stride=1, padding=1),
+            nn.Conv3d(64, 2, kernel_size=1),
+            nn.BatchNorm3d(2, 0.8),
             nn.Tanh(),
         )
 
@@ -103,6 +104,10 @@ class Generator(nn.Module):
         out = self.l1(z)
         out = out.view(out.shape[0], 128, self.init_size, self.init_size,self.init_size)
         img = self.conv_blocks(out)
+        img = img.permute(0, 2, 3, 4, 1).contiguous()
+                # flatten
+        img = img.view(img.numel() // 2 , 2)
+        img = F.softmax(img)
         return img
 
 
@@ -153,7 +158,9 @@ class dcGAN(nn.Module):
     def forward(self, x):
         real_imgs = Variable(x.type(Tensor))
         encoder_imgs = self.Encoder(real_imgs)
-        gen_imgs = self.Generator(encoder_imgs)
+        gen_img = self.Generator(encoder_imgs)
+        gen_pred_flat = gen_img.data.max(1)[1]
+        gen_pred= gen_pred_flat.view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
         d_real = self.Discriminator(real_imgs)
-        d_fake = self.Discriminator(gen_imgs.detach())
-        return gen_imgs, d_real, d_fake
+        d_fake = self.Discriminator(gen_pred.detach())
+        return gen_img,gen_pred, d_real, d_fake
