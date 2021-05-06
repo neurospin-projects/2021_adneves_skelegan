@@ -144,10 +144,12 @@ if opt.test:
     print('début phase de test')
     loss_enc=0
     for batch_skel in skel_val:
+        print('début phase de boucle')
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
         target_long = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.long)
 
         gen_img,gen_pred, d_real, d_fake= model(target)
+        print('début phase de loss')
         # Loss measures generator's ability to fool the discriminator
         e_loss = criterion_pixel(gen_img, target_long.view(target_long.numel()))
 
@@ -162,7 +164,7 @@ if opt.generation !=0:
         z = Variable(Tensor(np.random.normal(0, 1, (opt.batch_size, opt.latent_dim))))
         gen_img = model.Generator(z)
         gen_pred_flat = gen_img.data.max(1)[1]
-        gen_pred= gen_pred_flat.view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
+        gen_pred= gen_pred_flat.view(opt.batch_size,1,img_shape[1],img_shape[1],img_shape[1]).type(torch.float32)
         save_image(gen_pred[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
         gen_n += 1
         print("images générées %s/%s" % (gen_n,opt.generation))
