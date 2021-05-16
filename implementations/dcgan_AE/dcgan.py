@@ -74,14 +74,12 @@ if opt.resume:
 # Optimizers
 optimizer_E = torch.optim.Adam(model.Encoder.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_G = torch.optim.Adam(model.Generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-optimizer_D = torch.optim.Adam(model.Discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))'''
-optimizer_G = torch.optim.RMSprop(model.Generator.parameters(), lr=opt.lr)
-optimizer_E = torch.optim.RMSprop(model.Encoder.parameters(), lr=opt.lr)
-optimizer_D = torch.optim.RMSprop(model.Discriminator.parameters(), lr=opt.lr)'''
+optimizer_D = torch.optim.Adam(model.Discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 W = Tensor(3)
-W[0],W[1],W[2] = 1,1,1.25
+W[0],W[1],W[2] = 1,1,1
 
 criterion_pixel =torch.nn.CrossEntropyLoss(weight = W)
 adversarial_loss = torch.nn.BCELoss()
@@ -91,7 +89,7 @@ print('  + Number of encoder params: {}'.format(
 #  Training
 # ----------
 
-loss_disc, loss_gen, loss_enc = [], [], []
+loss_gen= []
 n_epoch = 0
 for epoch in range(1, opt.n_epochs + 1):
     model.train()
@@ -105,43 +103,29 @@ for epoch in range(1, opt.n_epochs + 1):
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
         target_long = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.long)
 
-        # Adversarial ground truths
-        valid = Variable(Tensor(target.shape[0], 1).fill_(1.0), requires_grad=False)
-        fake = Variable(Tensor(target.shape[0], 1).fill_(0.0), requires_grad=False)
-        # Configure input
-
-        gen_img,gen_pred, d_real, d_fake= model(target)
+        gen_img,gen_pred= model(target)
         # Loss measures generator's ability to fool the discriminator
-        e_loss = 100 * criterion_pixel(gen_img, target_long.view(target_long.numel()))
-        g_loss = 10 * adversarial_loss(d_fake, valid)
+        e_loss =criterion_pixel(gen_img, target_long.view(target_long.numel()))
+        g_loss = e_loss
 
         e_loss.backward(retain_graph=True)
         g_loss.backward(retain_graph=True)
         optimizer_E.step()
         optimizer_G.step()
-        optimizer_D.zero_grad()
-        # Measure discriminator's ability to classify real from generated samples
-        real_loss = adversarial_loss(d_real, valid)
-        fake_loss = adversarial_loss(d_fake, fake)
-        d_loss = 10 * (real_loss + fake_loss) / 2
 
-        d_loss.backward(retain_graph=True)
-        optimizer_D.step()
-        loss_disc += [d_loss.item()]
         loss_gen += [g_loss.item()]
-        loss_enc += [e_loss.item()]
         i += 1
 
         print(
-            "[Epoque %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [E loss: %f]"
-            % (n_epoch + epoch, opt.n_epochs+n_epoch, i, len(skel_train), d_loss.item(), g_loss.item(), e_loss.item())
+            "[Epoque %d/%d] [Batch %d/%d] [G loss: %f] [E loss: %f]"
+            % (n_epoch + epoch, opt.n_epochs+n_epoch, i, len(skel_train), g_loss.item(), e_loss.item())
         )
 
         batches_done = epoch * len(skel_train) + i
         if batches_done % opt.sample_interval == 0:
             save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
             save_image(gen_pred[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
-display_loss(loss_disc, loss_gen,loss_enc)
+display_loss_norm(loss_gen)
 save_checkpoint(epoch + n_epoch,{'epoch': n_epoch + epoch,
                      'state_dict': model.state_dict(),
                      })
@@ -156,7 +140,7 @@ if opt.test:
         target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
         target_long = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.long)
 
-        gen_img,gen_pred, d_real, d_fake= model(target)
+        gen_img,gen_pred= model(target)
         # Loss measures generator's ability to fool the discriminator
         e_loss = criterion_pixel(gen_img, target_long.view(target_long.numel()))
 

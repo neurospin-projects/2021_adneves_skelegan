@@ -40,7 +40,7 @@ class ResidualBlock(nn.Module):
         return x + self.conv_block2(x_c)
 
 class Encoder(nn.Module):
-    def __init__(self,batch_size, in_channels=1, dim=4, n_downsample=4):
+    def __init__(self,batch_size, in_channels=1, dim=16, n_downsample=2):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         # Initial convolution block
@@ -54,7 +54,7 @@ class Encoder(nn.Module):
         # Downsampling
         for _ in range(n_downsample):
             layers += [
-                nn.Conv3d(dim, dim * 2, 4, stride=3, padding=1),
+                nn.Conv3d(dim, dim * 2, 4, stride=7, padding=1),
                 nn.InstanceNorm3d(dim * 2),
                 nn.ReLU(inplace=True),
             ]
@@ -158,10 +158,7 @@ class dcGAN(nn.Module):
     def forward(self, x):
         real_imgs = Variable(x.type(Tensor))
         encoder_imgs = self.Encoder(real_imgs)
-        print('encoder dim', encoder_imgs.shape)
         gen_img = self.Generator(encoder_imgs)
         gen_pred_flat = gen_img.data.max(1)[1]
         gen_pred= gen_pred_flat.view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
-        d_real = self.Discriminator(real_imgs)
-        d_fake = self.Discriminator(gen_pred.detach())
-        return gen_img,gen_pred, d_real, d_fake
+        return gen_img,gen_pred
