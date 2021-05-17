@@ -2,104 +2,73 @@ import argparse
 import os
 import numpy as np
 import math
-import sys
-
-import torchvision.transforms as transforms
+from wgan_model import *
+#import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
 from torch.utils.data import DataLoader
-from torchvision import datasets
+from create_sets import *
+from display_loss import *
+import shutil
 from torch.autograd import Variable
 
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-
-os.makedirs("images", exist_ok=True)
-
+device = torch.device("cuda", index=0)
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
-parser.add_argument("--lr", type=float, default=0.00005, help="learning rate")
+parser.add_argument("--generation", type=int, default = 0)
+parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=28, help="size of each image dimension")
+parser.add_argument("--latent_dim", type=int, default=256, help="dimensionality of the latent space")
+parser.add_argument("--img_size", type=int, default=192, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=1, help="number of image channels")
+parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+parser.add_argument("--save")
 parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
 parser.add_argument("--clip_value", type=float, default=0.01, help="lower and upper clip value for disc. weights")
-parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+parser.add_argument("--test", type=bool, default=False)
+parser.add_argument('--resume', default='', type=str, metavar='PATH',
+                        help='path to latest checkpoint (default: none)')
 opt = parser.parse_args()
 print(opt)
 
-img_shape = (opt.channels, opt.img_size, opt.img_size)
+if os.path.exists(join('/neurospin/dico/adneves/dcgan_res/',opt.save)):
+    shutil.rmtree(join('/neurospin/dico/adneves/dcgan_res/',opt.save))
+os.makedirs(join('/neurospin/dico/adneves/dcgan_res/',opt.save), exist_ok=True)
+try:
+    os.mkdir(join('/neurospin/dico/adneves/dcgan_res/',opt.save, 'images'))
+except:
+    print ("dossier image déjà crée")
+
+img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 cuda = True if torch.cuda.is_available() else False
 
 
-class Generator(nn.Module):
-    def __init__(self):
-        super(Generator, self).__init__()
-
-        def block(in_feat, out_feat, normalize=True):
-            layers = [nn.Linear(in_feat, out_feat)]
-            if normalize:
-                layers.append(nn.BatchNorm1d(out_feat, 0.8))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
-            return layers
-
-        self.model = nn.Sequential(
-            *block(opt.latent_dim, 128, normalize=False),
-            *block(128, 256),
-            *block(256, 512),
-            *block(512, 1024),
-            nn.Linear(1024, int(np.prod(img_shape))),
-            nn.Tanh()
-        )
-
-    def forward(self, z):
-        img = self.model(z)
-        img = img.view(img.shape[0], *img_shape)
-        return img
+def save_checkpoint(epoch,state, filename='checkpoint.pth.tar'):
+    prefix_save = os.path.join('/neurospin/dico/adneves/dcgan_res/', opt.save)
+    name = prefix_save + '_' + filename
+    print('saving ... ')
+    torch.save(state, name)
+    print('model saved to ' + name)
+    shutil.copyfile(name, prefix_save + '_' + str(epoch) + '_model_best.pth.tar')
 
 
-class Discriminator(nn.Module):
-    def __init__(self):
-        super(Discriminator, self).__init__()
+model = WGAN(opt.latent_dim, img_shape, opt.batch_size).to(device)
 
-        self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
-        )
+if opt.resume:
+    if os.path.isfile(opt.resume):
+        print("=> chargement checkpoint '{}'".format(opt.resume))
+        checkpoint = torch.load(opt.resume)
+        model.load_state_dict(checkpoint['state_dict'])
+        print("=> chargé à l'époque n° (epoch {})"
+              .format( checkpoint['epoch']))
+    else:
+        print("=> pas de checkpoint trouvé '{}'".format(opt.resume))
 
-    def forward(self, img):
-        img_flat = img.view(img.shape[0], -1)
-        validity = self.model(img_flat)
-        return validity
-
-
-# Initialize generator and discriminator
-generator = Generator()
-discriminator = Discriminator()
-
-if cuda:
-    generator.cuda()
-    discriminator.cuda()
-
-# Configure data loader
-os.makedirs("../../data/mnist", exist_ok=True)
-dataloader = torch.utils.data.DataLoader(
-    datasets.MNIST(
-        "../../data/mnist",
-        train=True,
-        download=True,
-        transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]),
-    ),
-    batch_size=opt.batch_size,
-    shuffle=True,
-)
 
 # Optimizers
 optimizer_G = torch.optim.RMSprop(generator.parameters(), lr=opt.lr)
@@ -110,14 +79,23 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 #  Training
 # ----------
-
+loss_disc, loss_gen, loss_enc = [], [], []
 batches_done = 0
-for epoch in range(opt.n_epochs):
+for epoch in range(1, opt.n_epochs + 1):
+    model.train()
+    i = 0
+    if opt.resume:
+        n_epoch = checkpoint['epoch']
+    _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000)
 
-    for i, (imgs, _) in enumerate(dataloader):
+    for batch_skel in skel_train:
+        torch.cuda.empty_cache()
+        target = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+        target_long = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.long)
+
 
         # Configure input
-        real_imgs = Variable(imgs.type(Tensor))
+        real_imgs = Variable(target.type(Tensor))
 
         # ---------------------
         #  Train Discriminator
@@ -125,13 +103,10 @@ for epoch in range(opt.n_epochs):
 
         optimizer_D.zero_grad()
 
-        # Sample noise as generator input
-        z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
-
         # Generate a batch of images
-        fake_imgs = generator(z).detach()
+        gen_img, d_real, d_fake= model(target)
         # Adversarial loss
-        loss_D = -torch.mean(discriminator(real_imgs)) + torch.mean(discriminator(fake_imgs))
+        loss_D = -torch.mean(d_real) + torch.mean(d_fake)
 
         loss_D.backward()
         optimizer_D.step()
@@ -150,18 +125,25 @@ for epoch in range(opt.n_epochs):
             optimizer_G.zero_grad()
 
             # Generate a batch of images
-            gen_imgs = generator(z)
             # Adversarial loss
-            loss_G = -torch.mean(discriminator(gen_imgs))
+            loss_G = -torch.mean(d_fake)
 
             loss_G.backward()
             optimizer_G.step()
 
             print(
-                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-                % (epoch, opt.n_epochs, batches_done % len(dataloader), len(dataloader), loss_D.item(), loss_G.item())
+                "[Epoque %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [E loss: %f]"
+                % (n_epoch + epoch, opt.n_epochs+n_epoch, i, len(skel_train), d_loss.item(), g_loss.item(), e_loss.item())
             )
+            loss_disc += [d_loss.item()]
+            loss_gen += [g_loss.item()]
+            loss_enc += [e_loss.item()]
+            batches_done = epoch * len(skel_train) + i
 
-        if batches_done % opt.sample_interval == 0:
-            save_image(gen_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
-        batches_done += 1
+if batches_done % opt.sample_interval == 0:
+    save_image(target[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","data" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+    save_image(gen_pred[0,0,30,:,:], "/neurospin/dico/adneves/dcgan_res/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(batches_done)), nrow=5, normalize=True)
+display_loss(loss_disc, loss_gen,loss_enc)
+save_checkpoint(epoch + n_epoch,{'epoch': n_epoch + epoch,
+             'state_dict': model.state_dict(),
+             })

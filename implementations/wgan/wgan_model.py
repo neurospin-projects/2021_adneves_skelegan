@@ -104,43 +104,33 @@ class Generator(nn.Module):
         out = self.l1(z)
         out = out.view(out.shape[0], 128, self.init_size, self.init_size,self.init_size)
         img = self.conv_blocks(out)
-        img = img.permute(0, 2, 3, 4, 1).contiguous()
-                # flatten
-        img = img.view(img.numel() // 3 , 3)
-        img = F.softmax(img)
+        img = img..view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
+        #img = img.permute(0, 2, 3, 4, 1).contiguous()
+
+        #img = img.view(img.numel() // 3 , 3)
+        #img = F.softmax(img)
         return img
 
 
 class Discriminator(nn.Module):
-    def __init__(self, batch_size,img_shape):
+    def __init__(self):
         super(Discriminator, self).__init__()
-        self.img_shape = img_shape
-        def discriminator_block(in_filters, out_filters, bn=True):
-            block = [nn.Conv3d(in_filters, out_filters, 3, 2, 1), nn.LeakyReLU(0.2, inplace=True), nn.Dropout3d(0.25)]
-            if bn:
-                block.append(nn.BatchNorm3d(out_filters, 0.8))
-            return block
 
         self.model = nn.Sequential(
-            *discriminator_block(1, 16, bn=False),
-            *discriminator_block(16, 32),
-            *discriminator_block(32, 64),
-            *discriminator_block(64, 128),
+            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(256, 1),
         )
 
-        # The height and width of downsampled image
-        ds_size = img_shape[1] // 2 ** 4
-        self.adv_layer = nn.Sequential(nn.Linear(128 * ds_size ** 3, 1), nn.Sigmoid())
-
     def forward(self, img):
-        out = self.model(img)
-        out = out.view(out.shape[0], -1)
-        validity = self.adv_layer(out)
-
+        img_flat = img.view(img.shape[0], -1)
+        validity = self.model(img_flat)
         return validity
 
 
-class dcGAN(nn.Module):
+class WGAN(nn.Module):
     # the number of convolutions in each layer corresponds
     # to what is in the actual prototxt, not the intent
     def __init__(self, latent_dim, img_shape, batch_size):
@@ -158,10 +148,7 @@ class dcGAN(nn.Module):
     def forward(self, x):
         real_imgs = Variable(x.type(Tensor))
         encoder_imgs = self.Encoder(real_imgs)
-        print('encoder dim', encoder_imgs.shape)
-        gen_img = self.Generator(encoder_imgs)
-        gen_pred_flat = gen_img.data.max(1)[1]
-        gen_pred= gen_pred_flat.view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
+        gen_img = self.Generator(encoder_imgs).detach()
         d_real = self.Discriminator(real_imgs)
-        d_fake = self.Discriminator(gen_pred.detach())
-        return gen_img,gen_pred, d_real, d_fake
+        d_fake = self.Discriminator(gen_img)
+        return gen_img, d_real, d_fake
