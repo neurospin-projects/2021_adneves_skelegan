@@ -40,84 +40,97 @@ class ResidualBlock(nn.Module):
         return x + self.conv_block2(x_c)
 
 class Encoder(nn.Module):
-    def __init__(self,batch_size, in_channels=1, dim=4, n_downsample=4):
+    def __init__(self,batch_size, in_channels=1, dim=6, n_downsample=2):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         # Initial convolution block
         layers = [
             #nn.ReflectionPad3d(3),
-            nn.Conv3d(in_channels, dim, 7),
-            nn.InstanceNorm3d(dim),
+            nn.Conv3d(in_channels, 8, 7),
+            nn.InstanceNorm3d(8),
             nn.LeakyReLU(0.2, inplace=True),
         ]
 
         # Downsampling
-        for _ in range(n_downsample):
-            layers += [
-                nn.Conv3d(dim, dim * 2, 4, stride=3, padding=1),
-                nn.InstanceNorm3d(dim * 2),
+
+        layers += [
+                nn.Conv3d(8, 16, 4, stride=3, padding=1),
+                nn.InstanceNorm3d(16),
+                nn.ReLU(inplace=True), nn.Conv3d(16, 32, 3, stride=3, padding=1),
+                nn.InstanceNorm3d(32),
+                nn.ReLU(inplace=True), nn.Conv3d(32, 64, 3, stride=3, padding=1),
+                nn.InstanceNorm3d(64),
+                nn.ReLU(inplace=True),nn.Conv3d(64, 128, 3, stride=3, padding=1),
+                nn.InstanceNorm3d(128),
+                nn.ReLU(inplace=True),nn.Conv3d(128, 256, 3, stride=3, padding=1),
+                nn.InstanceNorm3d(256),
+                nn.ReLU(inplace=True),nn.Conv3d(256, 512, 3, stride=3, padding=1),
+                nn.InstanceNorm3d(512),
+                nn.ReLU(inplace=True),nn.Conv3d(512, 1024, 3, stride=3, padding=1),
+                nn.InstanceNorm3d(1024),
                 nn.ReLU(inplace=True),
             ]
-            dim *= 2
 
-        # Residual blocks
-        for _ in range(3):
-            layers += [ResidualBlock(dim)]
 
         self.model_blocks = nn.Sequential(*layers)
 
-    def reparameterization(self, mu):
-        Tensor = torch.cuda.FloatTensor if mu.is_cuda else torch.FloatTensor
-        z = Variable(Tensor(np.random.normal(0, 1, mu.shape)))
-        return z + mu
 
     def forward(self, x):
         z = self.model_blocks(x)
-        #z = self.reparameterization(x)
         return z.view((self.batch_size,z.numel() //self.batch_size ))
 
 
 class Generator(nn.Module):
-    def __init__(self, latent_dim,img_shape):
+    def __init__(self, latent_dim,img_shape,batch_size):
         super(Generator, self).__init__()
+        self.img_shape=img_shape
+        self.batch_size=batch_size
         self.latent_dim =latent_dim
-        self.init_size = img_shape[1] // 8
+        self.init_size = img_shape[2] // 8
         self.l1 = nn.Sequential(nn.Linear(self.latent_dim, 128 * self.init_size ** 3))
-
         self.conv_blocks = nn.Sequential(
-            nn.BatchNorm3d(128),
-            nn.Upsample(scale_factor=2),
-            nn.Conv3d(128, 128, 3, stride=1, padding=1),
-            nn.BatchNorm3d(128, 0.8),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Upsample(scale_factor=2),
-            nn.Conv3d(128, 64, 3, stride=1, padding=1),
+            nn.Conv3d(128, 64, 4, stride=1, padding=2),
             nn.BatchNorm3d(64, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-            nn.Conv3d(64, 3, kernel_size=1),
+            nn.Conv3d(64, 32, 4, stride=1, padding=1),
+            nn.BatchNorm3d(32, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv3d(32, 32, 3, stride=1, padding=1),
+            nn.BatchNorm3d(32, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Upsample(scale_factor=2),
+            nn.Conv3d(32, 16, 3, stride=1, padding=1),
+            nn.BatchNorm3d(16, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Upsample(scale_factor=2),
+            nn.Conv3d(16, 16, 3, stride=1),
+            nn.BatchNorm3d(16, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv3d(16, 3, kernel_size=3),
             nn.BatchNorm3d(3, 0.8),
             nn.Tanh(),
         )
 
     def forward(self, z):
         out = self.l1(z)
-        out = out.view(out.shape[0], 128, self.init_size, self.init_size,self.init_size)
+        out = out.view(out.shape[0],128, self.init_size, self.init_size,self.init_size)
         img = self.conv_blocks(out)
-        img = img..view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
+        #img = img.view(self.batch_size,1,self.img_shape[2],self.img_shape[2],self.img_shape[2]).type(torch.float32)
         #img = img.permute(0, 2, 3, 4, 1).contiguous()
 
-        #img = img.view(img.numel() // 3 , 3)
-        #img = F.softmax(img)
+        img = img.view(img.numel() // 3 , 3)
+        img = F.softmax(img)
         return img
 
 
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self,img_shape,batch_size):
         super(Discriminator, self).__init__()
-
+        self.img_shape= img_shape
+        self.batch_size=batch_size
         self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.Linear(self.img_shape[2] ** 3, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
@@ -125,7 +138,7 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, img):
-        img_flat = img.view(img.shape[0], -1)
+        img_flat = img.view(self.batch_size, -1)
         validity = self.model(img_flat)
         return validity
 
@@ -134,13 +147,13 @@ class WGAN(nn.Module):
     # the number of convolutions in each layer corresponds
     # to what is in the actual prototxt, not the intent
     def __init__(self, latent_dim, img_shape, batch_size):
-        super(dcGAN, self).__init__()
+        super(WGAN, self).__init__()
         self.latent_dim = latent_dim
         self.img_shape = img_shape
         self.batch_size = batch_size
         self.Encoder = Encoder(self.batch_size)
-        self.Generator = Generator(self.latent_dim,self.img_shape)
-        self.Discriminator = Discriminator(self.batch_size,self.img_shape)
+        self.Generator = Generator(self.latent_dim,self.img_shape,self.batch_size)
+        self.Discriminator = Discriminator(self.img_shape,self.batch_size)
         self.Generator.apply(weights_init_normal)
         self.Discriminator.apply(weights_init_normal)
         self.Encoder.apply(weights_init_normal)
@@ -148,7 +161,9 @@ class WGAN(nn.Module):
     def forward(self, x):
         real_imgs = Variable(x.type(Tensor))
         encoder_imgs = self.Encoder(real_imgs)
-        gen_img = self.Generator(encoder_imgs).detach()
+        gen_img = self.Generator(encoder_imgs)
+        gen_pred_flat = gen_img.data.max(1)[1]
+        gen_pred= gen_pred_flat.view(self.batch_size,1,self.img_shape[1],self.img_shape[1],self.img_shape[1]).type(torch.float32)
         d_real = self.Discriminator(real_imgs)
-        d_fake = self.Discriminator(gen_img)
-        return gen_img, d_real, d_fake
+        d_fake = self.Discriminator(gen_pred)
+        return gen_img, gen_pred, d_real, d_fake
