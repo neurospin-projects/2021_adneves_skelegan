@@ -71,7 +71,7 @@ if opt.resume:
 
 criterion_pixel = torch.nn.L1Loss()
 # Optimizers
-lr= 0.001
+lr= 0.01
 optimizer_E = torch.optim.RMSprop(model.Encoder.parameters(), lr=lr)
 optimizer_G = torch.optim.RMSprop(model.Generator.parameters(),  lr=lr)
 optimizer_D = torch.optim.RMSprop(model.Discriminator.parameters(),  lr=lr)

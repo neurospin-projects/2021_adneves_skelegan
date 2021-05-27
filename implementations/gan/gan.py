@@ -121,9 +121,9 @@ for epoch in range(opt.n_epochs):
 
         d_loss.backward(retain_graph=True)
         optimizer_D.step()
-        loss_disc += [d_loss]
-        loss_gen += [g_loss]
-        loss_enc += [e_loss]
+        loss_disc += [d_loss.item()]
+        loss_gen += [g_loss.item()]
+        loss_enc += [e_loss.item()]
         i += 1
 
         print(
