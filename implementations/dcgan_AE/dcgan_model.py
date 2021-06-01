@@ -47,7 +47,7 @@ class Encoder(nn.Module):
         layers = [
             #nn.ReflectionPad3d(3),
             nn.Conv3d(in_channels, dim, 7),
-            nn.InstanceNorm3d(dim),
+            nn.BatchNorm3d(dim),
             nn.LeakyReLU(0.2, inplace=True),
         ]
 
@@ -55,25 +55,17 @@ class Encoder(nn.Module):
         for _ in range(n_downsample):
             layers += [
                 nn.Conv3d(dim, dim * 2, 4, stride=7, padding=1),
-                nn.InstanceNorm3d(dim * 2),
+                nn.BatchNorm3d(dim * 2),
                 nn.ReLU(inplace=True),
             ]
             dim *= 2
 
-        # Residual blocks
-        for _ in range(3):
-            layers += [ResidualBlock(dim)]
 
         self.model_blocks = nn.Sequential(*layers)
 
-    def reparameterization(self, mu):
-        Tensor = torch.cuda.FloatTensor if mu.is_cuda else torch.FloatTensor
-        z = Variable(Tensor(np.random.normal(0, 1, mu.shape)))
-        return z + mu
 
     def forward(self, x):
         z = self.model_blocks(x)
-        #z = self.reparameterization(x)
         return z.view((self.batch_size,z.numel() //self.batch_size ))
 
 
