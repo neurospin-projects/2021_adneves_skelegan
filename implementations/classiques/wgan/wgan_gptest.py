@@ -3,6 +3,7 @@ import os
 import numpy as np
 import math
 import sys
+import gc
 
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
@@ -21,6 +22,7 @@ import torch
 cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 device = torch.device("cuda", index=0)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
@@ -55,17 +57,20 @@ except:
 img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 class Encoder(nn.Module):
-    def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=3):
+    def __init__(self,batch_size, in_channels=1, dim=16, n_downsample=3):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         # Initial convolution block
         layers = [
             #nn.ReflectionPad3d(3),
-            nn.Conv3d(in_channels, dim, 3),
+            nn.Conv3d(in_channels, dim, 1,1),
             nn.BatchNorm3d(dim),
             nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv3d(dim, dim*2, 3),
+            nn.BatchNorm3d(dim*2),
+            nn.LeakyReLU(0.2, inplace=True),
         ]
-
+        dim = dim *2
         # Downsampling
         for _ in range(n_downsample):
             layers += [
@@ -81,35 +86,31 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         z = self.model_blocks(x)
-        return z.view((self.batch_size,z.numel() //self.batch_size ))
+        return z
 
 class Generator(nn.Module):
     def __init__(self, latent_dim,img_shape):
         super(Generator, self).__init__()
-        self.latent_dim =latent_dim
-        self.init_size = img_shape[1] // 8
-        self.l1 = nn.Sequential(nn.Linear(self.latent_dim, 128 * self.init_size ** 3))
-
         self.conv_blocks = nn.Sequential(
-            nn.BatchNorm3d(128),
+            nn.Conv3d(256, 128, 3, stride=1, padding=3),
+            nn.BatchNorm3d(128,0.8),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-            nn.Conv3d(128, 128, 3, stride=1, padding=1),
+            nn.Conv3d(128, 128, 2, stride=1, padding=3),
             nn.BatchNorm3d(128, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-            nn.Conv3d(128, 64, 3, stride=1, padding=1),
+            nn.Conv3d(128, 64, 3, stride=1, padding=2),
             nn.BatchNorm3d(64, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Upsample(scale_factor=2),
-            nn.Conv3d(64, 3, kernel_size=1),
+            nn.Conv3d(64, 3,stride=1, kernel_size=1),
             nn.BatchNorm3d(3, 0.8),
             nn.Tanh(),
         )
 
     def forward(self, z):
-        img = self.l1(z)
-        img = img.view(img.shape[0], 128, self.init_size, self.init_size,self.init_size)
-        img = self.conv_blocks(img)
+        img = self.conv_blocks(z)
         return img
 
 
@@ -119,11 +120,11 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(512000, 512),
+            nn.Linear(512000, 5000),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Linear(5000, 1000),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
+            nn.Linear(1000, 1),
         )
 
     def forward(self, img):
@@ -194,7 +195,8 @@ i = 0
 _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
 for epoch in range(opt.n_epochs):
     for batch_skel in skel_train:
-
+        gc.collect()
+        torch.cuda.empty_cache()
         # Configure input
         torch.cuda.empty_cache()
         real_imgs = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
@@ -260,7 +262,7 @@ for epoch in range(opt.n_epochs):
         i += 1
 print('saving ... ')
 state={'epoch': n_epoch + opt.n_epochs, 'state_dict_gen': generator.state_dict(),'state_dict_disc': discriminator.state_dict(),'state_dict_enc': encoder.state_dict()}
-name=join('/neurospin/dico/adneves/wgan_gp/', 'epoch_'+str(n_epoch + opt.n_epochs)+ '_checkpoint.pth.tar')
+name=join('/neurospin/dico/adneves/wgan_gp/', 'epoch_'+str(n_epoch + opt.n_epochs)+str(opt.save)+ '_checkpoint.pth.tar')
 torch.save(state, name)
 print('model saved to ' + name)
 display_loss(loss_disc, loss_gen, loss_enc)
@@ -286,7 +288,7 @@ if opt.test:
 
     print('loss de reconstruction en test : ', loss_enc/len(skel_val))
 
-'parcours une droite'
+
 
 
 ## génération de squelettes nouveaux
