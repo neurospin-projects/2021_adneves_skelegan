@@ -55,7 +55,7 @@ except:
 img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 class Encoder(nn.Module):
-    def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=3):
+    def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=4):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         # Initial convolution block
@@ -69,7 +69,7 @@ class Encoder(nn.Module):
         # Downsampling
         for _ in range(n_downsample):
             layers += [
-                nn.Conv3d(dim, dim * 2, 4, stride=3, padding=1),
+                nn.Conv3d(dim, dim * 2, 3, stride=3, padding=1),
                 nn.BatchNorm3d(dim * 2),
                 nn.ReLU(inplace=True),
             ]
@@ -81,6 +81,7 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         z = self.model_blocks(x)
+        print(z.numel() //self.batch_size)
         return z.view((self.batch_size,z.numel() //self.batch_size ))
 
 class Generator(nn.Module):
@@ -91,7 +92,7 @@ class Generator(nn.Module):
         self.l1 = nn.Sequential(nn.Linear(self.latent_dim, 128 * self.init_size ** 3))
 
         self.conv_blocks = nn.Sequential(
-            nn.BatchNorm3d(128),
+            #nn.BatchNorm3d(128),
             nn.Upsample(scale_factor=2),
             nn.Conv3d(128, 128, 3, stride=1, padding=1),
             nn.BatchNorm3d(128, 0.8),
@@ -110,6 +111,7 @@ class Generator(nn.Module):
         img = self.l1(z)
         img = img.view(img.shape[0], 128, self.init_size, self.init_size,self.init_size)
         img = self.conv_blocks(img)
+        print('gen shape : ',img.shape)
         return img
 
 
@@ -119,7 +121,7 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(512000, 512),
+            nn.Linear(7077888, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
@@ -128,6 +130,7 @@ class Discriminator(nn.Module):
 
     def forward(self, img):
         img_flat = img.view(img.shape[0], -1).to(torch.float32)
+        print(img_flat.shape)
         validity = self.model(img_flat)
         return validity
 
@@ -192,7 +195,7 @@ if opt.resume:
 loss_gen,loss_disc,loss_enc=[],[],[]
 i = 0
 #directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton'
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000,adn=False, directory_base='/neurospin/dico/adneves/pickles/L_skeleton/1000_Lskeleton')
 for epoch in range(opt.n_epochs):
     for batch_skel in skel_train:
 
@@ -287,6 +290,7 @@ if opt.test:
 
     print('loss de reconstruction en test : ', loss_enc/len(skel_val))
 
+'parcours une droite'
 
 
 ## génération de squelettes nouveaux

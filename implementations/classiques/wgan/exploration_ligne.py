@@ -19,6 +19,8 @@ import torch
 parser = argparse.ArgumentParser()
 parser.add_argument("--resume", default=None)
 parser.add_argument("--save")
+parser.add_argument("--ligne", default=False)
+parser.add_argument("--expl_dim",default=None, type=int)
 parser.add_argument("--nb_samples", default=10,type=int)
 opt = parser.parse_args()
 print(opt)
@@ -128,17 +130,30 @@ else:
 
 print('début du test')
 _, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
-idx_1=random.randint(0,110)
-idx_2=random.randint(0,110)
+
 samples =[]
-for i,sample in enumerate(skel_test):
-    samples += Variable(sample[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-save_image(samples[0][0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"sample_img1"), nrow=5, normalize=True)
-save_image(samples[1][0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"sample_img2"), nrow=5, normalize=True)
-enc_sample1=encoder(samples[0].unsqueeze(1)).to(device, dtype=torch.float32)
-enc_sample2=encoder(samples[1].unsqueeze(1)).to(device, dtype=torch.float32)
-diff= enc_sample2 - enc_sample1
-list_samples=[enc_sample1 + (k/opt.nb_samples)*diff for k in range(opt.nb_samples) ]
+
+if opt.ligne:
+    for i,sample in enumerate(skel_test):
+        samples += Variable(sample[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+    save_image(samples[0][0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"sample_img1"), nrow=5, normalize=True)
+    save_image(samples[1][0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"sample_img2"), nrow=5, normalize=True)
+    enc_sample1=encoder(samples[0].unsqueeze(1)).to(device, dtype=torch.float32)
+    enc_sample2=encoder(samples[1].unsqueeze(1)).to(device, dtype=torch.float32)
+    diff= enc_sample2 - enc_sample1
+    list_samples=[enc_sample1 + (k/opt.nb_samples)*diff for k in range(opt.nb_samples) ]
+
+espacement=25
+
+if opt.expl_dim != None:
+    img=next(iter(skel_test))
+    img = Variable(img[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+    img_encoded=encoder(img).to(device, dtype=torch.float32)
+    list_samples= [img_encoded for k in range(opt.nb_samples) ]
+    for k in range(opt.nb_samples):
+        list_samples[k][0][opt.expl_dim]+=  espacement * (k - (opt.nb_samples-1)/2  )
+        print('dim : ',list_samples[k][0][opt.expl_dim])
+
 
 for i,sample in enumerate(list_samples):
     gen_s=generator(sample)
