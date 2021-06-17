@@ -143,16 +143,17 @@ if opt.ligne:
     diff= enc_sample2 - enc_sample1
     list_samples=[enc_sample1 + (k/opt.nb_samples)*diff for k in range(opt.nb_samples) ]
 
-espacement=25
+espacement=10
 
 if opt.expl_dim != None:
     img=next(iter(skel_test))
     img = Variable(img[0].type(torch.Tensor)).to(device, dtype=torch.float32)
     img_encoded=encoder(img).to(device, dtype=torch.float32)
-    list_samples= [img_encoded for k in range(opt.nb_samples) ]
+    list_samples= [torch.clone(img_encoded).detach() for k in range(opt.nb_samples) ]
     for k in range(opt.nb_samples):
         list_samples[k][0][opt.expl_dim]+=  espacement * (k - (opt.nb_samples-1)/2  )
-        print('dim : ',list_samples[k][0][opt.expl_dim])
+        #list_samples[k][0][opt.expl_dim] += k*espacement
+
 
 
 for i,sample in enumerate(list_samples):

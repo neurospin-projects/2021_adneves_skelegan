@@ -30,7 +30,7 @@ parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of firs
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
 parser.add_argument("--save")
-parser.add_argument("--test", default=False)
+parser.add_argument("--valid", type=int,default=50)
 parser.add_argument("--generation", default=0, type=int)
 parser.add_argument("--lbd", type=float,default=1.)
 parser.add_argument("--sulcus_weight", default=1,type=float)
@@ -137,7 +137,7 @@ W[0],W[1],W[2] = 1,1,opt.sulcus_weight
 criterion_pixel =torch.nn.CrossEntropyLoss(weight = W)
 # Loss weight for gradient penalty
 lambda_gp = 100
-
+valid_scores=[]
 # Initialize generator and discriminator
 encoder= Encoder(opt.batch_size).to(device, dtype=torch.float32)
 generator = Generator(opt.latent_dim,img_shape).to(device, dtype=torch.float32)
@@ -152,7 +152,7 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt
 def compute_gradient_penalty(D, real_samples, fake_samples):
     """Calculates the gradient penalty loss for WGAN GP"""
     # Random weight term for interpolation between real and fake samples
-    alpha = Tensor(np.random.random((real_samples.size(0), 1, 1, 1,1)))
+    alpha = Tensor(np.random.random((real_samples.shape[0], 1, 1, 1,1)))
     # Get random interpolation between real and fake samples
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
     d_interpolates = D(interpolates)
@@ -192,10 +192,9 @@ if opt.resume:
 loss_gen,loss_disc,loss_enc=[],[],[]
 i = 0
 #directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton'
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
 for epoch in range(opt.n_epochs):
     for batch_skel in skel_train:
-
         # Configure input
         torch.cuda.empty_cache()
         real_imgs = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
@@ -238,7 +237,7 @@ for epoch in range(opt.n_epochs):
 
             loss_CE=criterion_pixel(fake_imgs, real_imgs.squeeze(1).long())
             g_loss = -opt.lbd*torch.mean(fake_validity) + 100*loss_CE
-            e_loss= 1000*loss_CE
+            e_loss= 100*loss_CE
 
             g_loss.backward( retain_graph=True)
             e_loss.backward( retain_graph=True)
@@ -252,6 +251,24 @@ for epoch in range(opt.n_epochs):
                 "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [E loss: %f]"
                 % (epoch+n_epoch, n_epoch+opt.n_epochs, i, (epoch+1)*len(skel_train), d_loss.item(), g_loss.item(),e_loss.item())
             )
+        if i % opt.valid==0:
+            loss_enco=0
+            j=0
+            for batch_skel in skel_val:
+                real_imgs = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+                z = encoder(real_imgs).to(device, dtype=torch.float32)
+
+                fake_imgs = generator(z)
+                fake_maxed =fake_imgs.max(1)[1].to(torch.float32)
+                # Loss measures generator's ability to fool the discriminator
+                loss_CE = criterion_pixel(fake_imgs, real_imgs.squeeze(1).long())
+                e_loss= 100*loss_CE
+                loss_enco += e_loss.item()
+                j += 1
+            valid_score=loss_enco/len(skel_val)
+            valid_scores += [valid_score]
+            print('loss de reconstruction en test : ', valid_score)
+
 
         if i % opt.sample_interval == 0:
             save_image(real_imgs[0,0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(i)), nrow=5, normalize=True)
@@ -264,30 +281,8 @@ state={'epoch': n_epoch + opt.n_epochs, 'state_dict_gen': generator.state_dict()
 name=join('/neurospin/dico/adneves/wgan_gp/', 'epoch_'+str(n_epoch + opt.n_epochs)+'_'+ str(opt.save)+ '_checkpoint.pth.tar')
 torch.save(state, name)
 print('model saved to ' + name)
-display_loss(loss_disc, loss_gen, loss_enc)
-if opt.test:
-    #### TEST
-    print('début phase de test')
-    loss_enc=0
-    j=0
-    for batch_skel in skel_val:
-        real_imgs = Variable(batch_skel[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-        z = encoder(real_imgs).to(device, dtype=torch.float32)
-
-        fake_imgs = generator(z)
-        fake_maxed =fake_imgs.max(1)[1].to(torch.float32)
-        # Loss measures generator's ability to fool the discriminator
-        loss_CE = criterion_pixel(fake_imgs, real_imgs.squeeze(1).long())
-        e_loss= 1000*loss_CE
-        loss_enc += e_loss.item()
-        j += 1
-        save_image(real_imgs[0,0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s/%s.png" % (opt.save,"images","valid_target" + str(epoch) + '_' + str(j)), nrow=5, normalize=True)
-        save_image(fake_maxed[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s/%s.png" % (opt.save,"images","valid_img" + str(epoch) + '_' + str(j)), nrow=5, normalize=True)
-
-
-    print('loss de reconstruction en test : ', loss_enc/len(skel_val))
-
-
+display_loss(loss_disc, loss_gen, loss_enc,opt.n_critic)
+display_loss_norm(valid_scores,opt.valid)
 
 ## génération de squelettes nouveaux
 if opt.generation !=0:

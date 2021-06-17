@@ -1,12 +1,13 @@
-from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+import sklearn.metrics as sk
 import argparse
 import os
 import numpy as np
 import math
 import sys
+from yellowbrick.cluster import SilhouetteVisualizer
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
 from torchvision.utils import save_image
 
 from torch.utils.data import DataLoader,Subset
@@ -24,7 +25,7 @@ cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 device = torch.device("cuda", index=0)
 img_shape = (1, 80, 80,80)
-twodim=False
+
 class Encoder(nn.Module):
     def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=3):
         super(Encoder, self).__init__()
@@ -78,50 +79,15 @@ for i,batch_test in enumerate(skel_test):
     z = encoder(real_imgs).detach().squeeze(0).numpy()
     list[i]=z
 
-if twodim:
-    tsne = TSNE(n_components=2, perplexity=20, n_iter=300)
-
-    tsne_results = tsne.fit_transform(list)
-    df_subset['tsne-2d-one'] = tsne_results[:,0]
-    df_subset['tsne-2d-two'] = tsne_results[:,1]
 
 
-
-    plt.figure(figsize=(16,10))
-
-    fig1=sns.scatterplot(
-        x="tsne-2d-one", y="tsne-2d-two",
-        palette=sns.color_palette("hls", 10),
-        data=df_subset,
-        legend="full",
-        alpha=0.3
-    )
-
-    for k in range(len(skel_test)):
-        plt.text(x=df_subset['tsne-2d-one'][k], y=df_subset['tsne-2d-two'][k] + 0.2, s = list_name1[k])
-
-    plt.show()
-else:
-    tsne = TSNE(n_components=3, perplexity=20, n_iter=300)
-    tsne_results = tsne.fit_transform(list)
-    x = tsne_results[:,0]
-    y = tsne_results[:,1]
-    z = tsne_results[:,2]
+fig, ax = plt.subplots(2, 2, figsize=(15,8))
+for i in [2, 3, 4, 5]:
 
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection = '3d')
+    km = KMeans(n_clusters=i, init='k-means++', random_state=42)
+    q, mod = divmod(i, 2)
 
-
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-
-    ax.scatter(x, y, z)
-
-
-    '''for k in range(len(skel_test)):
-        plt.text(x=x[k], y=y[k] + 0.2, s = list_name1[k])'''
-
-    plt.show()
+    visualizer = SilhouetteVisualizer(km, colors='yellowbrick', ax=ax[q-1][mod])
+    visualizer.fit(list)
+plt.show()
