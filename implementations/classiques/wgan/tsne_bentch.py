@@ -66,59 +66,63 @@ else:
     print("=> pas de checkpoint trouvé '{}'".format(opt.resume))
 
 tsne = TSNE(n_components=2, perplexity=40, n_iter=300)
-dataset200= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/analyse/Lskeleton_200')
-dataset400= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/analyse/Lskeleton_400')
-dataset700= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/analyse/Lskeleton_700')
-datasetraw= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/analyse/Lskeleton_raw')
+dataset200= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/benchmark/200/Lskeleton_200')
+dataset500= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/benchmark/500/Lskeleton_500')
+dataset800= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/benchmark/800/Lskeleton_800')
+datasetraw= main_create_b('skeleton','L',batch_size = 1,directory='/neurospin/dico/adneves/benchmark/raw/Lskeleton_raw')
 list200=np.empty((len(dataset200),1728))
-list400=np.empty((len(dataset400),1728))
-list700=np.empty((len(dataset700),1728))
+list500=np.empty((len(dataset500),1728))
+list800=np.empty((len(dataset800),1728))
 listraw=np.empty((len(datasetraw),1728))
 df_subset200=dict()
-df_subset400=dict()
-df_subset700=dict()
+df_subset500=dict()
+df_subset800=dict()
 df_subsetraw=dict()
 list_name200=[]
-list_name400=[]
-list_name700=[]
+list_name500=[]
+list_name800=[]
 list_nameraw=[]
-for batch_test in dataset200:
+
+for i,batch_test in enumerate(dataset200):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_name200 += [batch_test[1]]
+    list_name200 += [str(batch_test[1])+'_200']
 
     z = encoder(real_imgs).detach().squeeze(0).numpy()
-    np.append(list200,z)
-for batch_test in dataset400:
+    list200[i]=z
+    #np.append(list200,np.nan_to_num(z))
+
+for i,batch_test in enumerate(dataset500):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_name400 += [batch_test[1]]
+    list_name500 += [str(batch_test[1])+'_500']
 
     z = encoder(real_imgs).detach().squeeze(0).numpy()
-    np.append(list400,z)
-for batch_test in dataset700:
+    list500[i]=z
+
+for i,batch_test in enumerate(dataset800):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_name700 += [batch_test[1]]
+    list_name800 += [str(batch_test[1])+'_800']
 
     z = encoder(real_imgs).detach().squeeze(0).numpy()
-    np.append(list700,z)
+    list800[i]=z
 
-for batch_test in datasetraw:
+for i,batch_test in enumerate(datasetraw):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
     list_nameraw += [batch_test[1]]
 
     z = encoder(real_imgs).detach().squeeze(0).numpy()
-    np.append(listraw,z)
+    listraw[i]=z
 
 tsne_results200 = tsne.fit_transform(list200)
 df_subset200['tsne-2d-one'] = tsne_results200[:,0]
 df_subset200['tsne-2d-two'] = tsne_results200[:,1]
 
-tsne_results400 = tsne.fit_transform(list400)
-df_subset400['tsne-2d-one'] = tsne_results400[:,0]
-df_subset400['tsne-2d-two'] = tsne_results400[:,1]
+tsne_results500 = tsne.fit_transform(list500)
+df_subset500['tsne-2d-one'] = tsne_results500[:,0]
+df_subset500['tsne-2d-two'] = tsne_results500[:,1]
 
-tsne_results700 = tsne.fit_transform(list700)
-df_subset700['tsne-2d-one'] = tsne_results700[:,0]
-df_subset700['tsne-2d-two'] = tsne_results700[:,1]
+tsne_results800 = tsne.fit_transform(list800)
+df_subset800['tsne-2d-one'] = tsne_results800[:,0]
+df_subset800['tsne-2d-two'] = tsne_results800[:,1]
 
 tsne_resultsraw = tsne.fit_transform(listraw)
 df_subsetraw['tsne-2d-one'] = tsne_resultsraw[:,0]
@@ -137,7 +141,7 @@ fig2=sns.scatterplot(
     x="tsne-2d-one", y="tsne-2d-two",
     palette=sns.color_palette("hls", 10),
     edgecolor="black",
-    data=df_subset400,
+    data=df_subset500,
     legend="full",
     alpha=0.3
 )
@@ -145,7 +149,7 @@ fig3=sns.scatterplot(
     x="tsne-2d-one", y="tsne-2d-two",
     palette=sns.color_palette("hls", 10),
     edgecolor="green",
-    data=df_subset700,
+    data=df_subset800,
     legend="full",
     alpha=0.3
 )
@@ -159,11 +163,12 @@ fig4=sns.scatterplot(
 )
 
 for k in range(len(dataset200)):
-    plt.text(x=df_subset200['tsne-2d-one'][k], y=df_subset200['tsne-2d-two'][k] + 1, s = list_name200[k])
-for k in range(len(dataset400)):
-    plt.text(x=df_subset400['tsne-2d-one'][k], y=df_subset400['tsne-2d-two'][k] + 1, s = list_name400[k])
-for k in range(len(dataset700)):
-    plt.text(x=df_subset700['tsne-2d-one'][k], y=df_subset700['tsne-2d-two'][k] + 1, s = list_name700[k])
+    plt.text(x=df_subset200['tsne-2d-one'][k], y=df_subset200['tsne-2d-two'][k] + 1, s = list_name200[k] )
+for k in range(len(dataset500)):
+    plt.text(x=df_subset500['tsne-2d-one'][k], y=df_subset500['tsne-2d-two'][k] + 1, s = list_name500[k])
+for k in range(len(dataset800)):
+    plt.text(x=df_subset800['tsne-2d-one'][k], y=df_subset800['tsne-2d-two'][k] + 1, s = list_name800[k])
 for k in range(len(datasetraw)):
     plt.text(x=df_subsetraw['tsne-2d-one'][k], y=df_subsetraw['tsne-2d-two'][k] + 1, s = list_nameraw[k])
+
 plt.show()

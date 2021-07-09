@@ -16,23 +16,35 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--resume", default=None)
-parser.add_argument("--save")
+parser.add_argument("--save", default=None)
 parser.add_argument("--ligne", default=False)
+parser.add_argument("--feature_rank", type=int, default=None)
+parser.add_argument("--sum_dim", default=False)
 parser.add_argument("--expl_dim",default=None, type=int)
 parser.add_argument("--nb_samples", default=10,type=int)
+parser.add_argument("--min_max", default=None,type=list)
 opt = parser.parse_args()
 print(opt)
+text=''
+if opt.min_max:
+    for k in opt.min_max:
+        text+=k
 
+    text=text.split(',')
+    extremums=[float(k) for k in text]
+    print('range = ',extremums)
 cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 device = torch.device("cuda", index=0)
 img_shape = (1, 80, 80,80)
 
-if os.path.exists(join('/neurospin/dico/adneves/wgan_gp/',opt.save)):
-    shutil.rmtree(join('/neurospin/dico/adneves/wgan_gp/',opt.save))
-os.makedirs(join('/neurospin/dico/adneves/wgan_gp/',opt.save), exist_ok=True)
+if opt.save:
+    if os.path.exists(join('/neurospin/dico/adneves/wgan_gp/',opt.save)):
+        shutil.rmtree(join('/neurospin/dico/adneves/wgan_gp/',opt.save))
+    os.makedirs(join('/neurospin/dico/adneves/wgan_gp/',opt.save), exist_ok=True)
 
 class Encoder(nn.Module):
     def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=3):
@@ -129,7 +141,8 @@ else:
 
 
 print('début du test')
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
+
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/original/Lskeleton')
 
 samples =[]
 
@@ -143,20 +156,63 @@ if opt.ligne:
     diff= enc_sample2 - enc_sample1
     list_samples=[enc_sample1 + (k/opt.nb_samples)*diff for k in range(opt.nb_samples) ]
 
-espacement=10
+    for i,sample in enumerate(list_samples):
+        gen_s=generator(sample)
+        gen_max =gen_s.max(1)[1].to(torch.float32)
+        save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"fake_img" + str(i)), nrow=5, normalize=True)
 
 if opt.expl_dim != None:
+    loss = nn.MSELoss()
     img=next(iter(skel_test))
     img = Variable(img[0].type(torch.Tensor)).to(device, dtype=torch.float32)
     img_encoded=encoder(img).to(device, dtype=torch.float32)
     list_samples= [torch.clone(img_encoded).detach() for k in range(opt.nb_samples) ]
+    list_gen=[]
+    espacement= (extremums[1] - extremums[0])/opt.nb_samples
     for k in range(opt.nb_samples):
-        list_samples[k][0][opt.expl_dim]+=  espacement * (k - (opt.nb_samples-1)/2  )
+        list_samples[k][0][opt.expl_dim] = k*espacement + extremums[0]
+        gen_s=generator(list_samples[k])
+        gen_max =gen_s.max(1)[1].to(torch.float32)
+        list_gen+=[gen_max]
+    losses=torch.Tensor([loss(img.squeeze(1),list_gen[k]) for k in range(opt.nb_samples)])
+    print(torch.min(losses),torch.max(losses))
+    for i,gen_max in enumerate(list_gen):
+        save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"fake_img" + str(i)), nrow=5, normalize=True)
+
+if opt.sum_dim:
+    latents=torch.empty((len(skel_test),1728))
+    for i,batch_test in enumerate(skel_test):
+        real_imgs = Variable(batch_test[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+
+        z = encoder(real_imgs).detach().to(device, dtype=torch.float32)
+        latents[i]=z
+    sample_sum=torch.sum(latents,0)/len(skel_test)
+    sample_sum=sample_sum.unsqueeze(0).to(device, dtype=torch.float32)
+    gen_s=generator(sample_sum).to(device, dtype=torch.float32)
+    gen_max =gen_s.max(1)[1].to(torch.float32).cpu().detach().numpy()
+    print(gen_max.shape)
+    #save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"vect_moyen"), nrow=5, normalize=True)
+    np.save("/neurospin/dico/adneves/wgan_gp/%s/vectmoyen.npy" % (opt.save), gen_max)
+
+if opt.feature_rank:
+    W = torch.Tensor(3).to(device, dtype=torch.float32)
+    W[0],W[1],W[2] = 1,1,10
+    criterion_pixel =torch.nn.CrossEntropyLoss(weight = W)
+    features_scores=dict()
+    for dim in range(opt.feature_rank):
+        print('test de la dimension %d' %(dim))
+        score_dim = 0
+        for batch_test in skel_test:
+            real_imgs = Variable(batch_test[0].type(torch.Tensor)).to(device, dtype=torch.float32)
+            z = encoder(real_imgs).detach().to(device, dtype=torch.float32)
+            encoded_imgs= [torch.clone(z).detach() for k in range(3)]
+            encoded_imgs[0][0][dim] -= 0.5
+            encoded_imgs[2][0][dim] += 0.5
+            scores = [criterion_pixel(generator(encoded), real_imgs.squeeze(1).long()).item() for encoded in encoded_imgs]
+            score_dim += abs(scores[2] - scores[1]) + abs(scores[1] - scores[0])
+
+        features_scores[('feature n°'+ str(dim)+' score' )] = [(score_dim*1000) / len(skel_test)]
+        print(features_scores)
+
+
         #list_samples[k][0][opt.expl_dim] += k*espacement
-
-
-
-for i,sample in enumerate(list_samples):
-    gen_s=generator(sample)
-    gen_max =gen_s.max(1)[1].to(torch.float32)
-    save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"fake_img" + str(i)), nrow=5, normalize=True)
