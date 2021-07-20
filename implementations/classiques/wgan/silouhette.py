@@ -17,6 +17,9 @@ import torch
 import torch.nn as nn
 
 parser = argparse.ArgumentParser()
+'''Calcule le score silhouette d'un modèle, avec au préalable un algorithme K-mean, de 2,3,4 et 5 nombres de clusters'''
+
+'''Resume est le chemin vers le modèle que l'ont veut utiliser'''
 parser.add_argument("--resume", default=None)
 opt = parser.parse_args()
 print(opt)

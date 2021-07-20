@@ -16,7 +16,11 @@ from create_sets import *
 import torch
 import torch.nn as nn
 
+
+'''Permet d'explorer 3 dimensions et resort ses histogrammes ainsi que ses valeurs maximales et minimales'''
+
 parser = argparse.ArgumentParser()
+'''Resume est le chemin vers le modèle que l'ont veut utiliser'''
 parser.add_argument("--resume", default=None)
 parser.add_argument("--dimensions", default=None, type=list)
 opt = parser.parse_args()

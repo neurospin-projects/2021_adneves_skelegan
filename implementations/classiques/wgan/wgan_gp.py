@@ -40,6 +40,9 @@ parser.add_argument("--channels", type=int, default=1, help="number of image cha
 parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
 parser.add_argument("--clip_value", type=float, default=0.01, help="lower and upper clip value for disc. weights")
 parser.add_argument("--sample_interval", type=int, default=100, help="interval betwen image samples")
+
+'''Resume est le chemin vers le modèle que l'ont veut utiliser, s'il on veut repartir sur un modèle existant'''
+
 parser.add_argument("--resume", default=None)
 opt = parser.parse_args()
 print(opt)

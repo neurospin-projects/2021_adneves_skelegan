@@ -15,7 +15,12 @@ from create_sets import *
 import torch
 import torch.nn as nn
 
+''' Permet d'afficher un tsn-e en 2D ou 3D des cerceaux test sur un modèle choisis'''
+
+
 parser = argparse.ArgumentParser()
+'''Resume est le chemin vers le modèle que l'ont veut utiliser'''
+
 parser.add_argument("--resume", default=None)
 opt = parser.parse_args()
 print(opt)

@@ -45,7 +45,9 @@ print(opt)
 img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 res = dict()
-range_n_critic=[1,2,3,4,5]
+
+''' CHOIX DES PARAMÈTRES DU GRID SEARCH'''
+range_n_critic=[2,3,4,5]
 range_dim_latent=[1728]
 range_lr=[0.0001,0.0005,0.001]
 
@@ -303,7 +305,7 @@ for n_critic in range_n_critic:
                     d_loss.backward( retain_graph=True)
                     optimizer_D.step()
                     i += 1
-                    stop = (len(valid_scores) >= opt.patience) and (all( x <valid_scores[-1] for x in valid_scores[-1 * opt.patience:-1]))
+                    #stop = (len(valid_scores) >= opt.patience) and (all( x <valid_scores[-1] for x in valid_scores[-1 * opt.patience:-1]))
 
                     if stop:
                         print('stopped at epoch %d' %(epoch+1))

@@ -18,13 +18,30 @@ import torch.autograd as autograd
 import torch
 
 parser = argparse.ArgumentParser()
+'''Resume est le chemin vers le modèle que l'ont veut utiliser'''
 parser.add_argument("--resume", default=None)
 parser.add_argument("--save", default=None)
+
+''' 4 différents modes de fontionnement du scripts'''
+
+'''Ligne : exploration de l'espace latent en ligne droite entre deux sujets'''
+
 parser.add_argument("--ligne", default=False)
-parser.add_argument("--feature_rank", type=int, default=None)
-parser.add_argument("--sum_dim", default=False)
-parser.add_argument("--expl_dim",default=None, type=int)
 parser.add_argument("--nb_samples", default=10,type=int)
+
+''' Feature rank : En argument le nombre de dimentions latentes, permet d'obtenir
+un dictionnaire avec un score pour chaque dimension'''
+
+
+parser.add_argument("--feature_rank", type=int, default=None)
+
+''' sum_dim:  crée en .npy le cerveau moyen des cerveaux du batch_test encodés'''
+
+parser.add_argument("--sum_dim", default=False)
+
+''' expl_dim : explore une dimension de l'espace latent entre sa valeur maximale et minimale'''
+
+parser.add_argument("--expl_dim",default=None, type=int)
 parser.add_argument("--min_max", default=None,type=list)
 opt = parser.parse_args()
 print(opt)
@@ -36,6 +53,8 @@ if opt.min_max:
     text=text.split(',')
     extremums=[float(k) for k in text]
     print('range = ',extremums)
+
+
 cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 device = torch.device("cuda", index=0)
@@ -129,7 +148,7 @@ discriminator = Discriminator().to(device, dtype=torch.float32)
 
 if os.path.isfile(opt.resume):
     print("=> chargement checkpoint '{}'".format(opt.resume))
-    checkpoint = torch.load(opt.resume)
+    checkpoint = torch.load(opt.resume)parser.add_argument("--nb_samples", default=10,type=int)
     generator.load_state_dict(checkpoint['state_dict_gen'])
     discriminator.load_state_dict(checkpoint['state_dict_disc'])
     encoder.load_state_dict(checkpoint['state_dict_enc'])

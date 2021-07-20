@@ -85,29 +85,29 @@ list_nameraw=[]
 
 for i,batch_test in enumerate(dataset200):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_name200 += [str(batch_test[1])+'_200']
-
+    #list_name200 += [str(batch_test[1])+'_200']
+    list_name200 += ['200']
     z = encoder(real_imgs).detach().squeeze(0).numpy()
     list200[i]=z
     #np.append(list200,np.nan_to_num(z))
 
 for i,batch_test in enumerate(dataset500):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_name500 += [str(batch_test[1])+'_500']
-
+    #list_name500 += [str(batch_test[1])+'_500']
+    list_name500 += ['500']
     z = encoder(real_imgs).detach().squeeze(0).numpy()
     list500[i]=z
 
 for i,batch_test in enumerate(dataset800):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_name800 += [str(batch_test[1])+'_800']
-
+    #list_name800 += [str(batch_test[1])+'_800']
+    list_name800 += ['800']
     z = encoder(real_imgs).detach().squeeze(0).numpy()
     list800[i]=z
 
 for i,batch_test in enumerate(datasetraw):
     real_imgs = Variable(batch_test[0].type(torch.Tensor))
-    list_nameraw += [batch_test[1]]
+    list_nameraw += ['0']
 
     z = encoder(real_imgs).detach().squeeze(0).numpy()
     listraw[i]=z
