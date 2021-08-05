@@ -18,7 +18,9 @@ import torch.autograd as autograd
 import torch
 
 parser = argparse.ArgumentParser()
+
 '''Resume est le chemin vers le modèle que l'ont veut utiliser'''
+
 parser.add_argument("--resume", default=None)
 parser.add_argument("--save", default=None)
 

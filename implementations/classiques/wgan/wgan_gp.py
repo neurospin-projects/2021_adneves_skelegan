@@ -59,11 +59,11 @@ except:
 img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 class Encoder(nn.Module):
-    def __init__(self,batch_size,latent_dim, in_channels=1, dim=8, n_downsample=2):
+    def __init__(self,batch_size,latent_dim, in_channels=1, dim=8, n_downsample=3):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         self.latent_dim=latent_dim
-        self.l1 = nn.Sequential(nn.Linear(2048, self.latent_dim))
+        self.l1 = nn.Sequential(nn.Linear(1728, self.latent_dim))
         # Initial convolution block
         layers = [
             #nn.ReflectionPad3d(3),
@@ -127,11 +127,11 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(512000, 512),
+            nn.Linear(512000, 100000),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Linear(100000, 1000),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
+            nn.Linear(1000, 1),
         )
 
     def forward(self, img):
