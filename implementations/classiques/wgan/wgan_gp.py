@@ -47,7 +47,7 @@ parser.add_argument("--resume", default=None)
 opt = parser.parse_args()
 print(opt)
 
-
+#Creation du dossier où tout sera sauvegardé 
 if os.path.exists(join('/neurospin/dico/adneves/wgan_gp/',opt.save)):
     shutil.rmtree(join('/neurospin/dico/adneves/wgan_gp/',opt.save))
 os.makedirs(join('/neurospin/dico/adneves/wgan_gp/',opt.save), exist_ok=True)
