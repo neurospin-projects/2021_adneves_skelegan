@@ -1,5 +1,9 @@
 # GAN Gradient Penalty
 The proposed codes are part of a deep learning projet conducted on brain sulci . The goal is, thanks to the wGAN Gradient Penalty model, to learn the human variability of sulci. We work on the HCP database (http://www.humanconnectomeproject.org/), MRI images previously processed through the Morphologist pipeline (https://brainvisa.info/web/morphologist.html).
+
+![alt text](https://github.com/antdasneves/GAN/blob/main/schemaGan.png?raw=true)
+
+
 ## Dependencies
 * matplotlib==3.3.1
 * numpy==1.18.0
