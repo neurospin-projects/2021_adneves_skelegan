@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser()
 '''Resume est le chemin vers le modèle que l'ont veut utiliser'''
 
 parser.add_argument("--resume", default=None)
+parser.add_argument("--nb_dim", type=int, default=2)
 opt = parser.parse_args()
 print(opt)
 
@@ -29,7 +30,7 @@ cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 device = torch.device("cuda", index=0)
 img_shape = (1, 80, 80,80)
-twodim=False
+twodim=(opt.nb_dim == 2)
 class Encoder(nn.Module):
     def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=3):
         super(Encoder, self).__init__()

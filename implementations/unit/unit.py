@@ -192,7 +192,7 @@ for epoch in range(opt.epoch, opt.n_epochs):
         #loss_cyc_1 = lambda_4 * criterion_pixel(cycle_X1, X1)
         #loss_cyc_2 = lambda_4 * criterion_pixel(cycle_X2, X2)
 
-        pred = X2.data.max(1)[1])
+        pred = X2.data.max(1)[1]
         X1_flat= X1.view(X1.numel())
         #loss = F.nll_loss(output, target, weight=weights)
         loss_t = nn.CrossEntropyLoss()

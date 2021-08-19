@@ -264,6 +264,8 @@ def train_nll(args, epoch, model, gw_train, skel_train, optimizer, weights):
             image= pred.view(target_size)
             image = image.type(torch.float32)
             target_im = target.type(torch.float32)
+            print("data shape", data.shape)
+            print("target shape", target_im.shape)
             save_image(data[0,0,50,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","data" + str(epoch) + '_' + str(batch_idx)), nrow=5, normalize=True)
             save_image(target_im[0,0,50,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","target" + str(epoch) + '_' + str(batch_idx)), nrow=5, normalize=True)
             save_image(image[0,0,50,:,:], "/home/ad265693/GAN/implementations/Vnet/%s/%s/%s.png" % (args.save,"images","gw" + str(epoch) + '_' + str(batch_idx)), nrow=5, normalize=True)
