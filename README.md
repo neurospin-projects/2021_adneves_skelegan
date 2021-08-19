@@ -83,3 +83,4 @@ It is finally possible to visualise the latent space induced by the wgan-gp mode
 python3 tsne.py --nb_dim (2 or 3, number of dimensions on which you want to visualise your data) --resume (path to the model)
 ~~~
 
+![alt text](https://github.com/antdasneves/GAN/blob/main/tsne3Dtest.png?raw=true)
