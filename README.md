@@ -51,25 +51,25 @@ Here, you can find codes allowing to explore and assess the quality of a model p
 
 For the exploration_ligne.py script, there are 4 possible usages:
 
-* Interpolation between two brains
+* Interpolation between two brains\
 ~~~
 python3 exploration_ligne.py --ligne True --resume (path to the model) --save (saving repositories of image sampled) --nb_samples (number of points interpolated)
 ~~~
 
-* Feature ranking
+* Feature ranking\
 This option allows us to create a dictionary ranking each dimension of the model by importance 
 
 ~~~
 python3 exploration_ligne.py --resume (path to model evaluated) --feature_rank (number of dimensions)
 ~~~
 
-* Average Brain
+* Average Brain\
 Will save in .npy the average brain by averaging for each dimension, the code of all test brains encoded, then will generate with the trained generator the resulting brain image in 3D.
 ~~~
 python3 exploration_ligne.py --sum_dim True --resume (path to the model) --save (saving repositories of image sampled)
 ~~~
 
-* Dimension exploration
+* Dimension exploration\
 For a chosen dimension, and chosen boundaries, will sample images of encoded brains varying acording the dimension.
 
 ~~~
