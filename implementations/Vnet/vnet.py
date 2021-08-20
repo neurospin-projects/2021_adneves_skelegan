@@ -172,7 +172,6 @@ class VNet(nn.Module):
         out64 = self.down_tr64(out32)
         out128 = self.down_tr128(out64)
         out256 = self.down_tr256(out128)
-        print('espace lat : ', out256.shape)
         out = self.up_tr256(out256, out128)
         out = self.up_tr128(out, out64)
         out = self.up_tr64(out, out32)

@@ -27,7 +27,7 @@ import math
 import shutil
 
 import setproctitle
-from create_sets import *
+from create_setsVnet import *
 import vnet
 import make_graph
 from functools import reduce
@@ -249,10 +249,6 @@ def train_nll(args, epoch, model, gw_train, skel_train, optimizer, weights):
         optimizer.zero_grad()
         output = model(data)
         pred = output.data.max(1)[1]
-        '''for item in output:
-            max= torch.argmax(item)
-            item = [0,0,0]
-            item[max] = 1'''
         #loss = F.nll_loss(output, target, weight=weights)
         loss_t = nn.CrossEntropyLoss()
         loss= loss_t(output, target_flat)
