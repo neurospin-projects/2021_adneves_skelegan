@@ -2,32 +2,60 @@
 
 Vnet is a [PyTorch](http://pytorch.org/) implementation of the paper
 [V-Net: Fully Convolutional Neural Networks for Volumetric Medical Image Segmentation](https://arxiv.org/abs/1606.04797)
-by Fausto Milletari, Nassir Navab, and Seyed-Ahmad Ahmadi. Although this implementation is still a work  in progress, 
-I'm seeing a respectable 0.355% test error rate and a Dice coefficient of .9825 segmenting lungs from the LUNA16 data
-set after 249 epochs. The official implementation is available in the [faustomilletari/VNet](https://github.com/faustomilletari/VNet)
-repo on GitHub.
+by Fausto Milletari, Nassir Navab, and Seyed-Ahmad Ahmadi. \
 
-![](images/diagram.png)
+![alt text](https://github.com/antdasneves/GAN/blob/main/vnet.png?raw=true)
 
-This implementation relies on the LUNA16 loader and dice loss function from
-the [Torchbiomed](https://github.com/mattmacy/torchbiomed) package.
-
-## Differences with the official version
-This version uses batch normalization and dropout. Lung volumes in CTs are ~10% of the scan volume - a not too
-unreasonable class balance. For this particular test application I've added the option of using NLLoss instead
-of the Dice Coefficient.
-
-![](images/lung-loss-error.png)
+It is used here to transform a brain MRI image in skeleton form, depicting only the sulci, into a grey-white image which conveys more information.
 
 
-## What does the PyTorch compute graph of Vnet look like?
+![alt text](https://github.com/antdasneves/GAN/blob/main/hcp.png?raw=true)
 
-You can see the compute graph [here](images/vnet.png),
-which I created with [make_graph.py](https://github.com/mattmacy/vnet.pytorch/blob/master/make_graph.py),
-which I copied from [densenet.pytorch](https://github.com/bamos/densenet.pytorch) which in turn was
-copied from [Adam Paszke's gist](https://gist.github.com/apaszke/01aae7a0494c55af6242f06fad1f8b70).
+## Dependencies
+* matplotlib==3.3.1
+* numpy==1.18.0
+* pandas==1.1.5
+* pickleshare==0.7.5
+* Pillow==8.1.2
+* pyparsing==2.4.7
+* scikit-image==0.15.0
+* scikit-learn==0.21.3
+* scipy==1.1.0
+* seaborn==0.11.1
+* setproctitle==1.2.2
+* skorch==0.10.0
+* tensorboard==1.13.1
+* tensorflow==1.13.1
+* torch==1.8.0+cu111
+* torch-summary==1.4.5
+* torchio==0.18.30
+* torchvision==0.9.0+cu111
 
-### Credits
 
-The train.py script was derived from the one in the [densenet.pytorch](https://github.com/bamos/densenet.pytorch)
-repo.
+## Repositories
+Where the Vnet code is, with the corresponding codes with the tools to explore its latent space : \
+/home/ad265693/GAN/implementations/Vnet/
+
+Where the data used is, corresponding to 1000 left brain hemispheres of different subjects: \
+* For skeleton images: \
+/neurospin/dico/adneves/pickles/L_skeleton/1000_Lskeleton.pkl \
+
+* For grey-white images: \
+/neurospin/dico/adneves/pickles/L_gw/1000_Lgw.pkl
+
+
+
+The image generated and models are made to be saved in /neurospin/dico/adneves/
+This path can be modified in the code easily
+
+The Vnet uses the createsetsVnet.py code to create its training and validation database.
+It can be found in /home/ad265693/dl_tools/
+
+## How to use the script
+
+My code have been used within Kraken and an virtual environment.\
+When in the correct repository (/Vnet/), the following command will make the Vnet work:
+
+~~~
+python3 train.py --batchSz (batch size) --ngpu (number of GPU used) --nEpochs (number of epochs) --save (name of the repository were the results will be saved)
+~~~ 
