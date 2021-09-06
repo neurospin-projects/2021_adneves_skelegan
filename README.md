@@ -43,7 +43,7 @@ It can be found in /home/ad265693/dl_tools/
 ## How to use the scripts
 
 My code have been used within Kraken and an virtual environment.\
-When in the correct repository (/wgan), the following command will make the wgan-p work:
+When in the correct repository (https://github.com/antdasneves/GAN/tree/main/implementations/classiques/wgan), the following command will make the wgan-p work:
 
 ~~~
 python3 wgan_gp.py --save (name of save repository) --n_epochs (number of epochs) --latent_dim (number of latent dimensions) --img_size 80 --sample_interval (interval of sampling images) --batch_size (batch size) --n_critic (training ration generator/discriminator) --sulcus_weight (weight of sulci in the cross entropy) --resume (Optional : path to a model saved in '.pth.tar', will resume the training)
@@ -52,7 +52,7 @@ python3 wgan_gp.py --save (name of save repository) --n_epochs (number of epochs
 ## Exploration of the latent space
 Here, you can find codes allowing to explore and assess the quality of a model produced by the wGAN-gp
 
-For the exploration_ligne.py script, there are 4 possible usages:
+For the exploration_ligne.py script, situated in https://github.com/antdasneves/GAN/tree/main/implementations/classiques/wgan/, there are 4 possible usages:
 
 * Interpolation between two brains\
 ~~~
