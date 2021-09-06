@@ -28,6 +28,9 @@ The proposed codes are part of a deep learning projet conducted on brain sulci .
 Where the wgan-gp code is, with the corresponding codes with the tools to explore its latent space : \
 /home/ad265693/GAN/implementations/classiques/wgan/
 
+My codes all use a createsets.py script that creates training sets for my models: \
+https://github.com/louise-guillon/deep_folding/tree/antoine/dl_tools/
+
 Where the data used is, corresponding to crops of the s.t.s region: \
 /neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/original/Lskeleton
 
