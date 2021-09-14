@@ -63,9 +63,9 @@ device = torch.device("cuda", index=0)
 img_shape = (1, 80, 80,80)
 
 if opt.save:
-    if os.path.exists(join('/neurospin/dico/adneves/wgan_gp/',opt.save)):
-        shutil.rmtree(join('/neurospin/dico/adneves/wgan_gp/',opt.save))
-    os.makedirs(join('/neurospin/dico/adneves/wgan_gp/',opt.save), exist_ok=True)
+    if os.path.exists(opt.save):
+        shutil.rmtree(opt.save)
+    os.makedirs(opt.save, exist_ok=True)
 
 class Encoder(nn.Module):
     def __init__(self,batch_size, in_channels=1, dim=8, n_downsample=3):
@@ -150,7 +150,7 @@ discriminator = Discriminator().to(device, dtype=torch.float32)
 
 if os.path.isfile(opt.resume):
     print("=> chargement checkpoint '{}'".format(opt.resume))
-    checkpoint = torch.load(opt.resume)parser.add_argument("--nb_samples", default=10,type=int)
+    checkpoint = torch.load(opt.resume)
     generator.load_state_dict(checkpoint['state_dict_gen'])
     discriminator.load_state_dict(checkpoint['state_dict_disc'])
     encoder.load_state_dict(checkpoint['state_dict_enc'])
@@ -163,15 +163,15 @@ else:
 
 print('début du test')
 
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/original/Lskeleton')
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/1mm/Lskeleton')
 
 samples =[]
 
 if opt.ligne:
     for i,sample in enumerate(skel_test):
         samples += Variable(sample[0].type(torch.Tensor)).to(device, dtype=torch.float32)
-    save_image(samples[0][0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"sample_img1"), nrow=5, normalize=True)
-    save_image(samples[1][0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"sample_img2"), nrow=5, normalize=True)
+    save_image(samples[0][0,30,:,:], join(opt.save,"sample_img1.png"), nrow=5, normalize=True)
+    save_image(samples[1][0,30,:,:], join(opt.save,"sample_img2.png"), nrow=5, normalize=True)
     enc_sample1=encoder(samples[0].unsqueeze(1)).to(device, dtype=torch.float32)
     enc_sample2=encoder(samples[1].unsqueeze(1)).to(device, dtype=torch.float32)
     diff= enc_sample2 - enc_sample1
@@ -180,7 +180,7 @@ if opt.ligne:
     for i,sample in enumerate(list_samples):
         gen_s=generator(sample)
         gen_max =gen_s.max(1)[1].to(torch.float32)
-        save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"fake_img" + str(i)), nrow=5, normalize=True)
+        save_image(gen_max[0,30,:,:], join(opt.save,"fake_img" + str(i)+".png"), nrow=5, normalize=True)
 
 if opt.expl_dim != None:
     loss = nn.MSELoss()
@@ -198,7 +198,7 @@ if opt.expl_dim != None:
     losses=torch.Tensor([loss(img.squeeze(1),list_gen[k]) for k in range(opt.nb_samples)])
     print(torch.min(losses),torch.max(losses))
     for i,gen_max in enumerate(list_gen):
-        save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"fake_img" + str(i)), nrow=5, normalize=True)
+        save_image(gen_max[0,30,:,:], join(opt.save,"fake_img" + str(i)+".png"), nrow=5, normalize=True)
 
 if opt.sum_dim:
     latents=torch.empty((len(skel_test),1728))
@@ -213,7 +213,7 @@ if opt.sum_dim:
     gen_max =gen_s.max(1)[1].to(torch.float32).cpu().detach().numpy()
     print(gen_max.shape)
     #save_image(gen_max[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s.png" % (opt.save,"vect_moyen"), nrow=5, normalize=True)
-    np.save("/neurospin/dico/adneves/wgan_gp/%s/vectmoyen.npy" % (opt.save), gen_max)
+    np.save(join(opt.save,"vectmoyen.npy"), gen_max)
 
 if opt.feature_rank:
     W = torch.Tensor(3).to(device, dtype=torch.float32)

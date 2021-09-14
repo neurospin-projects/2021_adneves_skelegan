@@ -127,11 +127,11 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(512000, 1000),
+            nn.Linear(512000, 512),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(1000, 100),
+            nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(100, 1),
+            nn.Linear(256, 1),
         )
 
     def forward(self, img):

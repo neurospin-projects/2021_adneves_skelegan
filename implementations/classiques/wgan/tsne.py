@@ -71,7 +71,7 @@ if os.path.isfile(opt.resume):
 else:
     print("=> pas de checkpoint trouvé '{}'".format(opt.resume))
 
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton')
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = 1, nb = 1000,adn=False, directory_base='/neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/1mm/Lskeleton')
 
 list=np.empty((len(skel_test),1728))
 df_subset=dict()
