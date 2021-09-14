@@ -53,27 +53,27 @@ For the exploration_ligne.py script, situated in https://github.com/antdasneves/
 
 * Interpolation between two brains\
 ~~~
-python3 exploration_ligne.py --ligne True --resume (path to the model) --save (saving repositories of image sampled) --nb_samples (number of points interpolated)
+python3 exploration_latents.py --ligne True --resume (path to the model) --save (saving repositories of image sampled) --nb_samples (number of points interpolated)
 ~~~
 
 * Feature ranking\
 This option allows us to create a dictionary ranking each dimension of the model by importance 
 
 ~~~
-python3 exploration_ligne.py --resume (path to model evaluated) --feature_rank (number of dimensions)
+python3 exploration_latents.py --resume (path to model evaluated) --feature_rank (number of dimensions)
 ~~~
 
 * Average Brain\
 Will save in .npy the average brain by averaging for each dimension, the code of all test brains encoded, then will generate with the trained generator the resulting brain image in 3D.
 ~~~
-python3 exploration_ligne.py --sum_dim True --resume (path to the model) --save (saving repositories of image sampled)
+python3 exploration_latents.py --sum_dim True --resume (path to the model) --save (saving repositories of image sampled)
 ~~~
 
 * Dimension exploration\
 For a chosen dimension, and chosen boundaries, will sample images of encoded brains varying acording the dimension.
 
 ~~~
-python3 exploration_ligne.py --resume (path to the model) --save (saving repositories of image sampled) --nb_samples (number of points interpolated) --expl_dim (chosen dimension to explore) 
+python3 exploration_latents.py --resume (path to the model) --save (saving repositories of image sampled) --nb_samples (number of points interpolated) --expl_dim (chosen dimension to explore) 
 ~~~
 
 # t-SNE
