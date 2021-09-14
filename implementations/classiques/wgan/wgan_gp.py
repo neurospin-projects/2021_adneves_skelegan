@@ -47,7 +47,7 @@ parser.add_argument("--resume", default=None)
 opt = parser.parse_args()
 print(opt)
 
-#Creation du dossier où tout sera sauvegardé 
+#Creation du dossier où tout sera sauvegardé
 if os.path.exists(join('/neurospin/dico/adneves/wgan_gp/',opt.save)):
     shutil.rmtree(join('/neurospin/dico/adneves/wgan_gp/',opt.save))
 os.makedirs(join('/neurospin/dico/adneves/wgan_gp/',opt.save), exist_ok=True)
@@ -63,7 +63,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         self.latent_dim=latent_dim
-        self.l1 = nn.Sequential(nn.Linear(1728, self.latent_dim))
+        #self.l1 = nn.Sequential(nn.Linear(1728, self.latent_dim))
         # Initial convolution block
         layers = [
             #nn.ReflectionPad3d(3),
@@ -88,7 +88,7 @@ class Encoder(nn.Module):
     def forward(self, x):
         z = self.model_blocks(x)
         z=z.view((self.batch_size,-1))
-        z=self.l1(z)
+        #z=self.l1(z)
         return z
 
 class Generator(nn.Module):
@@ -127,11 +127,11 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(512000, 100000),
+            nn.Linear(512000, 1000),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(100000, 1000),
+            nn.Linear(1000, 100),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(1000, 1),
+            nn.Linear(100, 1),
         )
 
     def forward(self, img):
@@ -203,7 +203,7 @@ if opt.resume:
 loss_gen,loss_disc,loss_enc=[],[],[]
 i = 0
 #directory_base='/neurospin/dico/deep_folding_data/data/crops/STS_branches/nearest/original/Lskeleton'
-_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000,adn=False, directory_base='/neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/original/Lskeleton')
+_, skel_train, skel_val, skel_test = main_create('skeleton','L',batch_size = opt.batch_size, nb = 1000,adn=False, directory_base='/neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/1mm/Lskeleton')
 for epoch in range(opt.n_epochs):
     for batch_skel in skel_train:
         # Configure input
