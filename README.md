@@ -24,19 +24,25 @@ The proposed codes are part of a deep learning projet conducted on brain sulci .
 * torchvision==0.9.0+cu111
 
 
-## Repositories
-Where the wgan-gp code is, with the corresponding codes with the tools to explore its latent space : \
-implementations/classiques/wgan
+## Data
 
-Where the data used is, corresponding to crops of the s.t.s region: \
+The data used is the HCP database.
+
+The data used are crops of the s.t.s region: \
 /neurospin/dico/data/deep_folding/data/crops/STS_branches/nearest/1mm/Lskeleton
+
+## Repositories
+Where the wgan-gp code is, with the corresponding codes and the tools to explore its latent space : \
+implementations/classiques/wgan
 
 The image generated and models are made to be saved in /neurospin/dico/adneves/
 This path can be modified in the code easily
 
 ## How to use the scripts
 
-My code have been used within Kraken and a virtual environment.\
+We provide [a step-by-step tutorial](TUTORIAL.md)
+
+The code has been used within Kraken and a virtual environment.\
 When in the correct repository (implementations/classiques/wgan), the following command will make the wgan-p work:
 
 ~~~
