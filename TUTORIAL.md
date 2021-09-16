@@ -17,7 +17,7 @@ DIR=/path/to/dir
 git clone https://github.com/neurospin-projects/2021_adneves_skelegan.git
 ```
 
-We create a proper virtual environment (we should have a look in the [Neurospin Wiki](https://www.neurospin-wiki.org/pmwiki/Main/ComputationalResources#toc17) for the latest information/advice for an optimal kraken use), activate it and make the required installs:
+We create a proper virtual environment for kraken (Note that we should have a look in the [Neurospin Wiki](https://www.neurospin-wiki.org/pmwiki/Main/ComputationalResources#toc17) for the latest information/advice for an optimal kraken use), we activate it and make the required installs:
 
 ``` bash
 cd 2021_adneves_skelegan
@@ -28,22 +28,37 @@ pip3 install -r requirements.txt
 
 ## Step 1: train the model
 
-We choose the CUDA device and launch the training (we have to activate the cirtual environment, if note done yet: . venv/bin/activate):
-
-``` bash
-export CUDA_VISIBLE_DEVICES=0
-python3 wgan_gp.py --save fin --n_epochs 300 --latent_dim 1728 --img_size 80 --sample_interval 300 --batch_size 21 --n_critic 2 --sulcus_weight 15 --generation 10
-```
-
-Final model used to generate the figures in Antoine's report:
-
-/neurospin/dico/models/deep_folding/GAN/800_ep_modelbien.pth.tar
-
-## Step 2: explore the latent space
-
 We choose an output directory
 ``` bash
 OUTPUT_DIR=/path/to/output/dir
+```
+
+We choose the CUDA device and launch the training (we have to activate the cirtual environment, if not done yet: . venv/bin/activate):
+
+``` bash
+export CUDA_VISIBLE_DEVICES=0
+cd implementations
+python3 train.py --save $OUTPUT_DIR --n_epochs 300 --latent_dim 1728 --img_size 80 --sample_interval 300 --batch_size 21 --n_critic 2 --sulcus_weight 15 --generation 10
+```
+This generates a model with the weights in $OUTPUT_DIR/training.
+
+If we don't want to train the model for 300 epochs, or if we want to further analyze the model used to generate the figures in Antoine's report, we can load the final model:
+
+/neurospin/dico/models/deep_folding/GAN/800_ep_modelbien.pth.tar
+
+For the rest of the tutorial, we will use this final model.
+
+## Step 2: explore the latent space
+
+As before, we choose an output directory
+``` bash
+OUTPUT_DIR=/path/to/output/dir
+```
+
+We go to the postprocessing directory:
+
+``` bash
+cd postprocessing
 ```
 
 We explore the latents:
@@ -67,7 +82,7 @@ python3 tsne.py --nb_dim 3 --resume /neurospin/dico/models/deep_folding/GAN/800_
 
 To generate a 2D t-SNE with different benchmarks (different lengths of suppressed sulci: the length is given as the number of suppressed voxels 0, 200, 500, 800):
 ``` bash
-python3 tsne_bentch.py --resume /neurospin/dico/models/deep_folding/GAN/800_ep_modelbien.pth.tar
+python3 tsne_benchmark.py --resume /neurospin/dico/models/deep_folding/GAN/800_ep_modelbien.pth.tar
 ```
 
 ## Step 4 : Feature ranking
@@ -75,7 +90,7 @@ python3 tsne_bentch.py --resume /neurospin/dico/models/deep_folding/GAN/800_ep_m
 
 To perform a feature raking:
 ``` bash
-python3 exploration_latents.py --resume /neurospin/dico/adneves/wgan_gp/800_ep_modelbien.pth.tar --feature_rank 50
+python3 exploration_latents.py --resume /neurospin/dico/models/deep_folding/GAN/800_ep_modelbien.pth.tar --feature_rank 50
 ```
 It displays the rank in the terminal. For visualisation, the dictionary can be copy-pasted in the jupyter notebook (notebook/Display_results.ipynb).
 
@@ -83,17 +98,15 @@ It displays the rank in the terminal. For visualisation, the dictionary can be c
 
 We choose an output directory:
 
-/!\ WATCH: the program suppresses the output directory before writing on it!
-
 ``` bash
 OUTPUT_DIR=/path/to/output/dir
 ```
 
 We compute the average brain:
 ``` bash
-python3 exploration_latents.py --sum_dim True --resume /neurospin/dico/adneves/wgan_gp/800_ep_modelbien.pth.tar --save $OUTPUT_DIR 
+python3 exploration_latents.py --sum_dim True --resume /neurospin/dico/models/deep_folding/GAN/800_ep_modelbien.pth.tar --save $OUTPUT_DIR 
 ```
 
-This saves the average brain as a numpy array (vectmoyen.png).
+This saves the average brain as a numpy array (vectmoyen.npy).
 
 
