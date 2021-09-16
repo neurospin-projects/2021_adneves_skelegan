@@ -30,7 +30,7 @@ parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first 
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--save")
+parser.add_argument("--save", help="output directory path")
 parser.add_argument("--valid", type=int,default=50)
 parser.add_argument("--generation", default=0, type=int)
 parser.add_argument("--lbd", type=float,default=1.)
@@ -48,11 +48,9 @@ opt = parser.parse_args()
 print(opt)
 
 #Creation du dossier où tout sera sauvegardé
-if os.path.exists(join('/neurospin/dico/adneves/wgan_gp/',opt.save)):
-    shutil.rmtree(join('/neurospin/dico/adneves/wgan_gp/',opt.save))
-os.makedirs(join('/neurospin/dico/adneves/wgan_gp/',opt.save), exist_ok=True)
+os.makedirs(opt.save, exist_ok=True)
 try:
-    os.mkdir(join('/neurospin/dico/adneves/wgan_gp/',opt.save, 'images'))
+    os.mkdir(join(opt.save, 'images'))
 except:
     print ("dossier image déjà crée")
 
