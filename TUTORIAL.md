@@ -52,7 +52,7 @@ python3 exploration_latents.py --ligne True --resume /neurospin/dico/models/deep
 ```
 It uses one start skeleton (represented as sampled_img1.png) and an end skeleton (represented as sampled_img2.png). It generates 100 images by going, in the latent space, from the latent representation of the start skeleton to the latent representation of the end skeleton.
 
-## Step 3: t-SNE
+## Step 3 : t-SNE
 
 To generate a 2D t-SNE (each point labellized with the subject name):
 
