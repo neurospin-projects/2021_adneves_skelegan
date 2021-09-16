@@ -19,8 +19,8 @@ import torchvision.transforms as transforms
 from torch.autograd import Variable
 import torchio as tio
 
-from pynet_transforms import *
-import save_results
+from .pynet_transforms import *
+from . import save_results
 
 
 class TensorDataset_skeleton():

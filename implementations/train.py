@@ -11,8 +11,10 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torch.autograd import Variable
 import shutil
-from create_sets import *
-from display_loss import *
+
+from utils.create_sets import *
+from utils.display_loss import *
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
@@ -285,19 +287,19 @@ for epoch in range(opt.n_epochs):
             real_imgs3 = make_grid(real_imgs[0,0,50,:,:], nrow=5, normalize=True)
             real_imgs4 = make_grid(real_imgs[0,0,60,:,:], nrow=5, normalize=True)
             image_grid = torch.cat((real_imgs1, real_imgs2, real_imgs3, real_imgs4), 1)
-            save_image(image_grid, "/neurospin/dico/adneves/wgan_gp/%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(i)), nrow=5, normalize=True)
+            save_image(image_grid, "%s/%s/%s.png" % (opt.save,"images","target" + str(epoch) + '_' + str(i)), nrow=5, normalize=True)
             fake_imgs1 = make_grid(fake_maxed[0,30,:,:], nrow=5, normalize=True)
             fake_imgs2 = make_grid(fake_maxed[0,40,:,:], nrow=5, normalize=True)
             fake_imgs3 = make_grid(fake_maxed[0,50,:,:], nrow=5, normalize=True)
             fake_imgs4 = make_grid(fake_maxed[0,60,:,:], nrow=5, normalize=True)
             fake_grid = torch.cat((fake_imgs1, fake_imgs2, fake_imgs3, fake_imgs4), 1)
-            save_image(fake_grid, "/neurospin/dico/adneves/wgan_gp/%s/%s/%s.png" % (opt.save,"images","fake_img" + str(epoch) + '_' + str(i)), nrow=5, normalize=True)
+            save_image(fake_grid, "%s/%s/%s.png" % (opt.save,"images","fake_img" + str(epoch) + '_' + str(i)), nrow=5, normalize=True)
         d_loss.backward( retain_graph=True)
         optimizer_D.step()
         i += 1
 print('saving ... ')
 state={'epoch': n_epoch + opt.n_epochs, 'state_dict_gen': generator.state_dict(),'state_dict_disc': discriminator.state_dict(),'state_dict_enc': encoder.state_dict()}
-name=join('/neurospin/dico/adneves/wgan_gp/', 'epoch_'+str(n_epoch + opt.n_epochs)+'_'+ str(opt.save)+ '_checkpoint.pth.tar')
+name=join(opt.save, 'epoch_'+str(n_epoch + opt.n_epochs)+'_checkpoint.pth.tar')
 torch.save(state, name)
 print('model saved to ' + name)
 display_loss(loss_disc, loss_gen, loss_enc,1/(opt.batch_size/opt.n_critic))
@@ -311,7 +313,7 @@ if opt.generation !=0:
         z = Variable(Tensor(np.random.normal(0, 1, (opt.batch_size, opt.latent_dim))))
         fake_imgs = generator(z)
         fake_maxed =fake_imgs.max(1)[1].to(torch.float32)
-        save_image(fake_maxed[0,30,:,:], "/neurospin/dico/adneves/wgan_gp/%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
+        save_image(fake_maxed[0,30,:,:], "%s/%s/%s.png" % (opt.save,"images","new_im_" + str(new_im)), nrow=5, normalize=True)
         gen_n += 1
         print("images générées %s/%s" % (gen_n,opt.generation))
 print('fini !')
