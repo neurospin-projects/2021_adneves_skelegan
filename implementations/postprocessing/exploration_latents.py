@@ -11,7 +11,13 @@ from torchvision import datasets
 from torch.autograd import Variable
 import shutil
 import random
-from create_sets import *
+
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(PARENT_DIR)
+
+print(sys.path)
+
+from utils.create_sets import *
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
@@ -63,8 +69,6 @@ device = torch.device("cuda", index=0)
 img_shape = (1, 80, 80,80)
 
 if opt.save:
-    if os.path.exists(opt.save):
-        shutil.rmtree(opt.save)
     os.makedirs(opt.save, exist_ok=True)
 
 class Encoder(nn.Module):
