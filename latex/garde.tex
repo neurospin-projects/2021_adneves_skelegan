@@ -1,0 +1,183 @@
+% garde.tex
+% 
+% Auteur: Mohamed Habib Essoussi <mohamedhabib.essoussi@gmail.com>
+%
+% Date de création: 22/05/2012
+%
+%
+% Ce fichier est développé afin de faciliter la mise en oeuvre de la page de garde
+% des rapports de stage en latex pour les étudiants de TELECOM SudParis et qui est
+% conforme au design décrit aux annexes du guide des stages pour les étudiants en
+% 3eme année. 
+%
+%
+% Il suffit de remplacer les valeurs ci-dessous par les votres:
+\newcommand{\nomprenom}{% Votre nom et prénom
+    \fontsize{14}{14}\selectfont Antoine DAS NEVES
+}
+\newcommand{\nomEntreprise}{% Nom de l'entreprise en majuscule
+    \fontsize{16}{16}\selectfont CEA - NEUROSPIN
+}
+
+\newcommand{\nomAdresseEntreprise}{% nom, adresse de l'entreprise 
+    \fontsize{12}{12}\selectfont Centre d'études de Saclay, Bâtiment 145, 91191 Gif-sur-Yvette 
+}
+
+\newcommand{\titreMission}{% Le titre de la mission
+    \fontsize{14}{14}\selectfont Génération d’images de plissement cortical par algorithme de deep learning génératif et antagoniste (GAN)
+}
+
+\newcommand{\nomDirecteurStage}{% Le nom et le prénom du directeur de stage auprès de l'entreprise
+    \fontsize{12}{12}\selectfont Mounîm A. EL YACOUBI
+}
+
+\newcommand{\nomConseillerStage}{% Le nom et le prénom du conseiller de stage à TSP
+    \fontsize{12}{12}\selectfont Louise GUILLON
+}
+
+\newcommand{\anneeUniversitaire}{% L'année universitaire en format 20xx/20xx
+    \fontsize{15}{15}\selectfont 2020/2021
+}
+
+\newcommand{\dateDebut}{% Date du début
+    \fontsize{12}{12}\selectfont 22/02/2021
+}
+
+\newcommand{\dateFin}{% Date de la fin
+    \fontsize{12}{12}\selectfont 20/08/2021
+}
+
+% Il faudra créer les deux commandes suivantes le plus tôt que possible dans votre
+% projet latex.
+
+%\newcommand{\imagepath}{% Saisissez ici le répertoire de vos logos
+%logos/
+%}
+%\newcommand{\createimagepath}[1]{\imagepath#1} % A ne pas modifier
+
+%%%% FIN DES COMMANDES DE CONFIGURATION %%%%
+% !!! N'EDITEZ PAS CE QUI SUIT - SAUF EN CAS DE BESOIN !!!
+% ============================================================================ %
+
+\newpage 
+\thispagestyle{empty}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%				PREMIER GROUPE				       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ============================================================================ %
+%	LOGO_TELECOM_SUDPARIS				    ANNEE 20XX/20XX    %
+% ============================================================================ %	
+	\begingroup
+		\begin{tabular}{ll}
+		% LOGO DE TELECOM SUDPARIS
+  			\begin{minipage}[c]{0.0\textwidth}
+				\begin{flushleft}
+				\includegraphics[width=3cm]{%
+					\createimagepath{Logo_Telecom_sudparis.jpg}}
+				\end{flushleft}
+			\end{minipage}
+ 		 & 
+		% ANNEE UNIVERSITAIRE
+		\begin{minipage}[c]{1.0\textwidth}
+               		 \begin{flushright}
+			   	\textbf{ ANNEE \anneeUniversitaire}	
+                	 \end{flushright}
+       		 \end{minipage}
+	          \hspace{\stretch{1}}
+		\end{tabular}
+       		 \vskip 4.0em
+	\endgroup
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		         	DEUXIEME GROUPE				       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ============================================================================ %
+%		RAPPORT de "MISSION  en ENTREPRISE"			       %
+%									       %
+%		  	   présenté par					       %
+%			   \nomprenom					       %
+%									       %
+%		Mission effectuée du \dateDebut au \dateFin chez	       %
+%			    \nomEntreprise				       %
+%									       %
+%			    sujet de la mission:			       %
+%									       %
+%		________________________________________		       %
+%		| 		\titreMission		|		       %
+%		_________________________________________		       %
+%									       %
+% ============================================================================ %
+
+	\begingroup
+		\begin{center}
+			\textbf{\Large{RAPPORT de Stage}}	
+        		\vskip 2.0em
+
+			présenté par:					  	
+        		\vskip 2.0em
+			\textbf{\nomprenom}					  	
+			
+			
+        		\vskip 3.0em
+			{Mission effectuée du \dateDebut au \dateFin chez}  	
+        		\vskip 2.0em
+			\textbf{\nomEntreprise}	
+        		\vskip 3.5em
+
+			Sujet de la mission:				 	
+		\end{center}
+
+		 % CADRE POUR LE TITRE DE LA MISSION
+		 \parbox[b]{\textwidth}{%
+          	  \hrule height 1.5pt
+            	   \vrule width 1.5pt
+                	\hspace{1.80cm}
+            		\parbox[b]{\textwidth-4cm}{%
+            		\vspace{0.6em}
+            		\center\large{%
+               			\textbf{\titreMission}
+              	 	 }\endcenter
+           		 \vspace{0.6em}}
+           		 \hspace{1.80cm}
+           		 {\vrule width 1.5pt}
+            	    \hrule height 1.5pt
+                    }
+        	\vskip 3.5em
+	\endgroup
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		         	TROISIEME GROUPE			       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ============================================================================ %
+% Directeur de stage: \nomDirecteurStage				       %
+% Conseiller de Stage: \nomConseillerStage				       %
+% ============================================================================ %
+
+\begingroup
+	ENSEIGNANT REFERENT: \textbf{\nomDirecteurStage}						       
+        \vskip 1.0em
+	TUTRICE DE STAGE : \textbf{\nomConseillerStage}	
+\endgroup
+
+        \vskip 1.1em
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%		         	BAS DE PAGE				       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% ============================================================================ %
+% ____________________________________________________________________________ %
+% Travail effectué pour la société: \nomEntrepriseComplet		       %
+% ============================================================================ %
+
+\begingroup
+        \hrule height 1.0pt
+        \vskip 0.5em
+	Travail effectué pour la société: \nomAdresseEntreprise
+\endgroup
+\newpage
