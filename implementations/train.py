@@ -59,7 +59,7 @@ except:
 img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 class Encoder(nn.Module):
-    def __init__(self,batch_size,latent_dim, in_channels=1, dim=8, n_downsample=3):
+    def __init__(self, batch_size, latent_dim, in_channels=1, dim=8, n_downsample=3):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         self.latent_dim=latent_dim
@@ -87,7 +87,7 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         z = self.model_blocks(x)
-        z=z.view((self.batch_size,-1))
+        z=z.view((z.shape[0],-1))
         #z=self.l1(z)
         return z
 
@@ -147,8 +147,8 @@ criterion_pixel =torch.nn.CrossEntropyLoss(weight = W)
 lambda_gp = 100
 valid_scores=[]
 # Initialize generator and discriminator
-encoder= Encoder(opt.batch_size,opt.latent_dim).to(device, dtype=torch.float32)
-generator = Generator(opt.latent_dim,img_shape).to(device, dtype=torch.float32)
+encoder = Encoder(opt.batch_size, opt.latent_dim).to(device, dtype=torch.float32)
+generator = Generator(opt.latent_dim, img_shape).to(device, dtype=torch.float32)
 discriminator = Discriminator().to(device, dtype=torch.float32)
 '''summary(encoder, (1,80,80,80))
 summary(generator, (1,1728))
