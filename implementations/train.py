@@ -27,6 +27,7 @@ device = torch.device("cuda", index=0)
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--n_latent", type=int, default=1728, help="size of the latent space")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
@@ -59,15 +60,16 @@ except:
 img_shape = (opt.channels, opt.img_size, opt.img_size,opt.img_size)
 
 class Encoder(nn.Module):
-    def __init__(self, batch_size, latent_dim, in_channels=1, dim=8, n_downsample=3):
+    def __init__(self, batch_size, in_shape, latent_dim, in_channels=1, dim=8, n_downsample=3):
         super(Encoder, self).__init__()
         self.batch_size = batch_size
         self.latent_dim=latent_dim
+        self.z_dim = in_shape[1]//(2**n_downsample)
         #self.l1 = nn.Sequential(nn.Linear(1728, self.latent_dim))
         # Initial convolution block
         layers = [
             #nn.ReflectionPad3d(3),
-            nn.Conv3d(in_channels, dim, 3),
+            nn.Conv3d(in_channels, dim, 3, padding=1),
             nn.BatchNorm3d(dim),
             nn.LeakyReLU(0.2, inplace=True),
         ]
@@ -75,20 +77,21 @@ class Encoder(nn.Module):
         # Downsampling
         for _ in range(n_downsample):
             layers += [
-                nn.Conv3d(dim, dim * 2, 4, stride=3, padding=1),
+                nn.Conv3d(dim, dim * 2, 4, stride=2, padding=1),
                 nn.BatchNorm3d(dim * 2),
                 nn.ReLU(inplace=True),
             ]
             dim *= 2
 
-
         self.model_blocks = nn.Sequential(*layers)
+        self.l1 = nn.Linear(dim * self.z_dim**3, self.latent_dim)
 
 
     def forward(self, x):
         z = self.model_blocks(x)
-        z=z.view((z.shape[0],-1))
-        #z=self.l1(z)
+        z = z.view((z.shape[0], -1))
+        z = self.l1(z)
+
         return z
 
 class Generator(nn.Module):
@@ -147,7 +150,7 @@ criterion_pixel =torch.nn.CrossEntropyLoss(weight = W)
 lambda_gp = 100
 valid_scores=[]
 # Initialize generator and discriminator
-encoder = Encoder(opt.batch_size, opt.latent_dim).to(device, dtype=torch.float32)
+encoder = Encoder(opt.batch_size, img_shape, opt.latent_dim).to(device, dtype=torch.float32)
 generator = Generator(opt.latent_dim, img_shape).to(device, dtype=torch.float32)
 discriminator = Discriminator().to(device, dtype=torch.float32)
 '''summary(encoder, (1,80,80,80))
